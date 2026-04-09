@@ -9,26 +9,10 @@ import {
 import { MOCK_ISSUES } from "@/lib/mock/issues";
 import { MOCK_ASSETS } from "@/lib/mock/assets";
 import { MOCK_PROJECTS } from "@/lib/mock/projects";
+import { MOCK_ALERTS } from "@/lib/mock/alerts";
+import { getSourceConfig } from "@/lib/modules/source-config";
 
 export const metadata = { title: "Fix" };
-
-// ── source config ─────────────────────────────────────────────────────────────
-
-const SOURCE_CONFIG: Record<string, { label: string; subtitle: string }> = {
-  "issue-detail": {
-    label:    "Issue Detail",
-    subtitle: "Opened from Issue Detail",
-  },
-  "project-cc": {
-    label:    "Project Command Center",
-    subtitle: "Opened from Project Command Center",
-  },
-};
-
-const FALLBACK_SOURCE = {
-  label:    "External context",
-  subtitle: "Opened with diagnostic context",
-};
 
 // ── module features ───────────────────────────────────────────────────────────
 
@@ -52,26 +36,29 @@ const FEATURES = [
 
 // ── page ──────────────────────────────────────────────────────────────────────
 
-type SearchParams = Promise<{ issueId?: string; assetId?: string; source?: string }>;
+type SearchParams = Promise<{ issueId?: string; assetId?: string; alertId?: string; source?: string }>;
 
 export default async function FixPage({ searchParams }: { searchParams: SearchParams }) {
   const params  = await searchParams;
   const issueId = typeof params.issueId === "string" ? params.issueId : null;
   const assetId = typeof params.assetId === "string" ? params.assetId : null;
+  const alertId = typeof params.alertId === "string" ? params.alertId : null;
   const source  = typeof params.source  === "string" ? params.source  : null;
 
   // Context resolution from mock data
-  const issue   = issueId ? MOCK_ISSUES.find((i)   => i.id === issueId)   ?? null : null;
-  const asset   = assetId ? MOCK_ASSETS.find((a)   => a.id === assetId)   ?? null : null;
+  const issue = issueId ? MOCK_ISSUES.find((i) => i.id === issueId) ?? null : null;
+  const asset = assetId ? MOCK_ASSETS.find((a) => a.id === assetId) ?? null : null;
+  const alert = alertId ? MOCK_ALERTS.find((a) => a.id === alertId) ?? null : null;
 
-  // Derive project from issue → asset → fallback
+  // Derive project from issue → asset fallback
   const projectId = issue?.project_id ?? asset?.project_id ?? null;
   const project   = projectId ? MOCK_PROJECTS.find((p) => p.id === projectId) ?? null : null;
 
+  // Show banner whenever issue or asset context is present
   const hasContext = !!(issue || asset);
 
-  // Source label + subtitle
-  const sourceConfig = source ? (SOURCE_CONFIG[source] ?? FALLBACK_SOURCE) : null;
+  // Source config from shared registry
+  const sourceConfig = getSourceConfig(source);
 
   // Return link resolution
   let returnHref:  string | null = null;
@@ -83,7 +70,17 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
   } else if (source === "project-cc") {
     returnHref  = project ? `/projects/${project.id}` : "/projects";
     returnLabel = project ? `Back to ${project.name}` : "Back to Projects";
+  } else if (source === "alert-detail") {
+    returnHref  = alert ? `/alerts/${alert.id}` : "/alerts";
+    returnLabel = "Back to Alert";
   }
+
+  // Context origin chips — what entities are present in this session
+  const contextChips = [
+    issue   && { label: "Issue"   },
+    asset   && { label: "Asset"   },
+    project && { label: "Project" },
+  ].filter(Boolean) as { label: string }[];
 
   return (
     <PageContainer>
@@ -92,7 +89,7 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
       {hasContext && (
         <div className="mb-6 rounded-[var(--radius-card)] border border-teal/30 bg-teal/5 overflow-hidden">
 
-          {/* Banner header */}
+          {/* Header */}
           <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-4">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-teal/15 border border-teal/25 flex items-center justify-center shrink-0 mt-0.5">
@@ -105,11 +102,22 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
                 <p className="text-sm text-content-secondary">
                   {sourceConfig?.subtitle ?? "Opened with diagnostic context"}
                 </p>
-                {sourceConfig && (
-                  <span className="mt-1.5 inline-block text-[10px] font-bold uppercase tracking-widest text-teal/80 border border-teal/20 bg-teal/10 rounded-[var(--radius-badge)] px-1.5 py-0.5">
-                    {sourceConfig.label}
-                  </span>
-                )}
+                {/* Context origin chips */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {sourceConfig && (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-teal border border-teal/25 bg-teal/10 rounded-[var(--radius-badge)] px-1.5 py-0.5">
+                      {sourceConfig.label}
+                    </span>
+                  )}
+                  {contextChips.map(({ label }) => (
+                    <span
+                      key={label}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-content-secondary border border-surface-border bg-surface-overlay rounded-[var(--radius-badge)] px-1.5 py-0.5"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <Link
@@ -121,7 +129,7 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
             </Link>
           </div>
 
-          {/* Context details */}
+          {/* Context detail rows */}
           <div className="border-t border-teal/15 px-5 py-3.5 space-y-2.5">
             {issue && (
               <div className="flex items-center gap-3">
@@ -133,7 +141,9 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
                 <StatusBadge status={issue.severity} />
               </div>
             )}
-            {asset && (
+
+            {/* Asset row — show resolved asset OR graceful "no asset" note when issue exists */}
+            {asset ? (
               <div className="flex items-center gap-3">
                 <Truck size={13} className="text-content-muted shrink-0" />
                 <span className="text-xs text-content-muted w-14 shrink-0">Asset</span>
@@ -143,7 +153,14 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
                 </span>
                 <StatusBadge status={asset.status} />
               </div>
-            )}
+            ) : issue ? (
+              <div className="flex items-center gap-3">
+                <Truck size={13} className="text-content-muted shrink-0" />
+                <span className="text-xs text-content-muted w-14 shrink-0">Asset</span>
+                <span className="text-xs text-content-muted italic">No asset linked to this issue</span>
+              </div>
+            ) : null}
+
             {project && (
               <div className="flex items-center gap-3">
                 <Building2 size={13} className="text-content-muted shrink-0" />
@@ -155,7 +172,7 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
             )}
           </div>
 
-          {/* Banner footer — return + clear */}
+          {/* Footer — return + clear */}
           <div className="border-t border-teal/15 px-5 py-3 flex items-center gap-3">
             {returnHref && returnLabel && (
               <Link

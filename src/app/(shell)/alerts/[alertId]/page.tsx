@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, ExternalLink } from "lucide-react";
+import { ArrowLeft, Search, ExternalLink, Wrench } from "lucide-react";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { Card } from "@/components/ui/Card";
 import { MOCK_ALERTS } from "@/lib/mock/alerts";
+import { MOCK_ISSUES } from "@/lib/mock/issues";
 import { notFound } from "next/navigation";
 import type { AlertType, AlertSeverity } from "@/types/domain";
 
@@ -41,6 +42,14 @@ export default async function AlertDetailPage({ params }: { params: Params }) {
   const alert = MOCK_ALERTS.find((a) => a.id === alertId);
 
   if (!alert) notFound();
+
+  // Resolve related issue for Fix handoff
+  const relatedIssue = alert.related_issue_id
+    ? MOCK_ISSUES.find((i) => i.id === alert.related_issue_id) ?? null
+    : null;
+  const fixHref = relatedIssue?.asset_id
+    ? `/modules/fix?issueId=${relatedIssue.id}&assetId=${relatedIssue.asset_id}&alertId=${alert.id}&source=alert-detail`
+    : null;
 
   return (
     <PageContainer>
@@ -96,6 +105,16 @@ export default async function AlertDetailPage({ params }: { params: Params }) {
               <Search size={14} />
               Investigate
             </Link>
+
+            {fixHref && (
+              <Link
+                href={fixHref}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal hover:opacity-90 text-content-inverse text-sm font-semibold transition-opacity"
+              >
+                <Wrench size={14} />
+                Open in Fix
+              </Link>
+            )}
 
             {alert.related_issue_id ? (
               <Link
