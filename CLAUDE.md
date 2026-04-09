@@ -1,5 +1,12 @@
 # AIGA Construction Platform — Architecture Rules
 
+## Session Start (REQUIRED)
+Read both files before making any changes:
+1. `CLAUDE.md` — rules for fast decisions
+2. `src/ARCHITECTURE.md` — deeper reference for building features
+
+---
+
 ## Platform Model
 - AIGA is the umbrella platform (multi-tenant SaaS)
 - Organizations = customer companies (tenants)
