@@ -29,7 +29,7 @@ export interface FixLaunchContext {
 // NEXT_PUBLIC_FIX_MODE=integrated (default) | standalone
 // NEXT_PUBLIC_FIX_BASE_URL=https://fix.aiga.app (only used in standalone mode)
 const FIX_MODE     = process.env.NEXT_PUBLIC_FIX_MODE     ?? "integrated";
-const FIX_BASE_URL = process.env.NEXT_PUBLIC_FIX_BASE_URL ?? "https://fix.aiga.app";
+const FIX_BASE_URL = process.env.NEXT_PUBLIC_FIX_BASE_URL ?? "https://fix.aigaai.com";
 
 export function isStandaloneMode(): boolean {
   return FIX_MODE === "standalone";

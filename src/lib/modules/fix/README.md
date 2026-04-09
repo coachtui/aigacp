@@ -83,7 +83,7 @@ Controlled by environment variables:
 ```env
 NEXT_PUBLIC_FIX_MODE=integrated       # default — routes to /modules/fix
 NEXT_PUBLIC_FIX_MODE=standalone       # routes to external Fix app
-NEXT_PUBLIC_FIX_BASE_URL=https://fix.aiga.app
+NEXT_PUBLIC_FIX_BASE_URL=https://fix.aigaai.com
 ```
 
 In integrated mode, all Fix links are internal Next.js routes (`/modules/fix?...`).
