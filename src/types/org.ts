@@ -1,6 +1,14 @@
 export type ModuleId = "cru" | "fix" | "inspect" | "datum";
 
-export type UserRole = "owner" | "admin" | "pm" | "foreman" | "viewer";
+export type UserRole =
+  | "owner"
+  | "admin"
+  | "pm"
+  | "project_engineer"
+  | "superintendent"
+  | "foreman"
+  | "mechanic"
+  | "viewer";
 
 export interface OrgContext {
   id:   string;

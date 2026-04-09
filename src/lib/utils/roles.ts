@@ -1,0 +1,21 @@
+import type { UserRole } from "@/types/org";
+
+export type RoleGroup = "oversight" | "office" | "field" | "maintenance";
+
+export function getRoleGroup(role: UserRole): RoleGroup {
+  switch (role) {
+    case "owner":
+    case "admin":
+      return "oversight";
+    case "pm":
+    case "project_engineer":
+      return "office";
+    case "superintendent":
+    case "foreman":
+      return "field";
+    case "mechanic":
+      return "maintenance";
+    default:
+      return "oversight";
+  }
+}

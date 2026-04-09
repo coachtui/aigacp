@@ -6,6 +6,7 @@ import { Search, Sparkles } from "lucide-react";
 import { useUI } from "@/providers/UIProvider";
 import { useOrg } from "@/providers/OrgProvider";
 import { ProjectSelector } from "./ProjectSelector";
+import { DevRoleSwitcher } from "@/components/dev/DevRoleSwitcher";
 import { ROLE_LABELS } from "@/lib/constants/roles";
 
 function getPageTitle(pathname: string): string {
@@ -47,10 +48,13 @@ export function Topbar() {
         {getPageTitle(pathname)}
       </h1>
 
-      {/* Project selector — center-ish */}
+      {/* Project selector */}
       <div className="hidden sm:block">
         <ProjectSelector />
       </div>
+
+      {/* Dev role switcher */}
+      <DevRoleSwitcher />
 
       {/* Right actions */}
       <div className="flex items-center gap-2">

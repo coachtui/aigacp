@@ -1,12 +1,35 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { MetricTile } from "@/components/ui/MetricTile";
 import { MOCK_ISSUES } from "@/lib/mock/issues";
+import { useOrg } from "@/providers/OrgProvider";
+import { getRoleGroup } from "@/lib/utils/roles";
+import type { Issue } from "@/types/domain";
 
 export function OpenIssuesCard() {
-  const open = MOCK_ISSUES.filter((i) => i.status !== "resolved");
+  const { role, currentProject } = useOrg();
+  const roleGroup = getRoleGroup(role);
+
+  let open: Issue[] = MOCK_ISSUES.filter((i) => i.status !== "resolved");
+
+  // Role-based filtering and ordering
+  if (roleGroup === "maintenance") {
+    open = open.filter((i) => !!i.asset_id);
+  } else if (roleGroup === "field") {
+    open = open.filter((i) => i.project_id === currentProject.id);
+  } else if (role === "project_engineer") {
+    // Inspect-origin issues first
+    open = [
+      ...open.filter((i) => i.module === "inspect"),
+      ...open.filter((i) => i.module !== "inspect"),
+    ];
+  }
+
+  const label = roleGroup === "maintenance" ? "Equipment Issues" : "Open Issues";
 
   const counts = {
     critical: open.filter((i) => i.severity === "critical").length,
@@ -14,6 +37,8 @@ export function OpenIssuesCard() {
     medium:   open.filter((i) => i.severity === "medium").length,
     low:      open.filter((i) => i.severity === "low").length,
   };
+
+  const total = open.length;
 
   const severityRows = [
     { label: "Critical", count: counts.critical, color: "text-status-critical", bar: "bg-status-critical", href: "/issues?severity=critical" },
@@ -26,8 +51,8 @@ export function OpenIssuesCard() {
     <Card variant={counts.critical > 0 ? "accent-gold" : "default"}>
       <div className="flex items-start justify-between mb-4">
         <MetricTile
-          label="Open Issues"
-          value={open.length}
+          label={label}
+          value={total}
           accentColor={counts.critical > 0 ? "red" : "blue"}
         />
         <Link href="/issues" className="text-xs text-content-muted hover:text-gold transition-colors flex items-center gap-1">
@@ -44,10 +69,10 @@ export function OpenIssuesCard() {
           >
             <span className="text-xs text-content-muted w-14 shrink-0 group-hover:text-content-secondary transition-colors">{row.label}</span>
             <div className="flex-1 h-1.5 bg-surface-overlay rounded-full overflow-hidden">
-              {row.count > 0 && (
+              {row.count > 0 && total > 0 && (
                 <div
                   className={`h-full ${row.bar} rounded-full`}
-                  style={{ width: `${Math.min((row.count / open.length) * 100, 100)}%` }}
+                  style={{ width: `${Math.min((row.count / total) * 100, 100)}%` }}
                 />
               )}
             </div>

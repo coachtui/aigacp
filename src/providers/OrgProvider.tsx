@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
-import type { OrgConfig, ProjectContext, ModuleId } from "@/types/org";
+import type { OrgConfig, ProjectContext, ModuleId, UserRole } from "@/types/org";
 import type { ModuleFeatureMap } from "@/types/org";
 import { getOrgConfig, MOCK_PROJECTS } from "@/lib/config/org";
 
@@ -9,10 +9,12 @@ interface OrgContextValue {
   currentOrganization: OrgConfig["org"];
   currentProject:      ProjectContext;
   currentUser:         OrgConfig["currentUser"];
+  role:                UserRole;
   enabledModules:      ModuleId[];
   features:            OrgConfig["features"];
   availableProjects:   ProjectContext[];
   setCurrentProject:   (project: ProjectContext) => void;
+  setRole:             (role: UserRole) => void;
   isModuleEnabled:     (id: ModuleId) => boolean;
   getModuleFeatures:   (id: ModuleId) => ModuleFeatureMap;
 }
@@ -24,6 +26,13 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
 
   function setCurrentProject(project: ProjectContext) {
     setConfig((prev) => ({ ...prev, currentProject: project }));
+  }
+
+  function setRole(role: UserRole) {
+    setConfig((prev) => ({
+      ...prev,
+      currentUser: { ...prev.currentUser, role },
+    }));
   }
 
   function isModuleEnabled(id: ModuleId): boolean {
@@ -40,10 +49,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         currentOrganization: config.org,
         currentProject:      config.currentProject,
         currentUser:         config.currentUser,
+        role:                config.currentUser.role,
         enabledModules:      config.enabledModules,
         features:            config.features,
         availableProjects:   MOCK_PROJECTS,
         setCurrentProject,
+        setRole,
         isModuleEnabled,
         getModuleFeatures,
       }}

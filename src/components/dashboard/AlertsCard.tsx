@@ -1,10 +1,14 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { AlertTriangle, Clock, Wrench, Shield, ClipboardCheck, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { MetricTile } from "@/components/ui/MetricTile";
 import { MOCK_ALERTS } from "@/lib/mock/alerts";
-import type { AlertType } from "@/types/domain";
+import { useOrg } from "@/providers/OrgProvider";
+import { getRoleGroup } from "@/lib/utils/roles";
+import type { Alert, AlertType } from "@/types/domain";
 
 const ALERT_ICON: Record<AlertType, React.ReactNode> = {
   safety:     <AlertTriangle  size={13} className="text-status-critical" />,
@@ -30,8 +34,24 @@ function relativeTime(iso: string): string {
 }
 
 export function AlertsCard() {
-  const unread = MOCK_ALERTS.filter((a) => !a.is_read);
-  const shown  = MOCK_ALERTS.slice(0, 4);
+  const { role, currentProject } = useOrg();
+  const roleGroup = getRoleGroup(role);
+
+  let alerts: Alert[] = [...MOCK_ALERTS];
+
+  // Role-based filtering and ordering
+  if (roleGroup === "field") {
+    alerts = alerts.filter((a) => a.project_id === currentProject.id);
+  } else if (roleGroup === "maintenance") {
+    // Equipment alerts first
+    alerts = [
+      ...alerts.filter((a) => a.type === "equipment"),
+      ...alerts.filter((a) => a.type !== "equipment"),
+    ];
+  }
+
+  const unread = alerts.filter((a) => !a.is_read);
+  const shown  = alerts.slice(0, 4);
 
   return (
     <Card variant={unread.length > 0 ? "accent-gold" : "default"}>

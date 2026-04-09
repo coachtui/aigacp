@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -5,18 +7,26 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { MetricTile } from "@/components/ui/MetricTile";
 import { MOCK_PROJECTS } from "@/lib/mock/projects";
+import { useOrg } from "@/providers/OrgProvider";
+import { getRoleGroup } from "@/lib/utils/roles";
 
 export function ActiveProjectsCard() {
+  const { role } = useOrg();
+  const roleGroup = getRoleGroup(role);
+
   const activeProjects = MOCK_PROJECTS.filter((p) => p.status === "active" || p.status === "on_hold");
   const top3 = activeProjects.slice(0, 3);
 
+  // Maintenance and field roles: de-emphasize multi-project view visually
+  const deemphasized = roleGroup === "maintenance" || roleGroup === "field";
+
   return (
-    <Card variant="default">
+    <Card variant="default" className={deemphasized ? "opacity-75" : undefined}>
       <div className="flex items-start justify-between mb-4">
         <MetricTile
           label="Active Projects"
           value={activeProjects.length}
-          accentColor="gold"
+          accentColor={deemphasized ? "blue" : "gold"}
         />
         <Link href="/projects" className="text-xs text-content-muted hover:text-gold transition-colors flex items-center gap-1">
           View all <ArrowRight size={11} />
