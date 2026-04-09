@@ -1,9 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileSearch } from "lucide-react";
+import { ArrowLeft, FileSearch } from "lucide-react";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { FixLaunchButton } from "@/components/modules/fix/FixLaunchButton";
 import { MOCK_ISSUES } from "@/lib/mock/issues";
 import { notFound } from "next/navigation";
 import type { ModuleId } from "@/types/org";
@@ -42,10 +43,6 @@ export default async function IssueDetailPage({ params }: { params: Params }) {
   const issue = MOCK_ISSUES.find((i) => i.id === issueId);
 
   if (!issue) notFound();
-
-  const fixHref = issue.asset_id
-    ? `/modules/fix?issueId=${issue.id}&assetId=${issue.asset_id}&source=issue-detail`
-    : `/modules/fix?issueId=${issue.id}&source=issue-detail`;
 
   const isFromInspect = issue.module === "inspect";
   const isFromFix     = issue.module === "fix";
@@ -92,13 +89,16 @@ export default async function IssueDetailPage({ params }: { params: Params }) {
           {/* Action bar */}
           <div className="flex flex-wrap gap-2">
             {(isFromFix || issue.asset_id) && (
-              <Link
-                href={fixHref}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal hover:opacity-90 text-content-inverse text-sm font-semibold transition-opacity"
-              >
-                <ExternalLink size={14} />
-                Open in Fix
-              </Link>
+              <FixLaunchButton
+                context={{
+                  source:    "issue-detail",
+                  issueId:   issue.id,
+                  assetId:   issue.asset_id,
+                  projectId: issue.project_id,
+                  returnTo:  `/issues/${issue.id}`,
+                }}
+                label="Open in Fix"
+              />
             )}
             {isFromInspect && issue.inspection_id ? (
               <Link

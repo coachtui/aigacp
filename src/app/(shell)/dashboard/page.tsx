@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Wrench, Users, Bell } from "lucide-react";
+import { Users, Bell } from "lucide-react";
+import { FixLaunchButton } from "@/components/modules/fix/FixLaunchButton";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { ActiveProjectsCard } from "@/components/dashboard/ActiveProjectsCard";
 import { OpenIssuesCard } from "@/components/dashboard/OpenIssuesCard";
@@ -53,19 +54,23 @@ function ContextBanner() {
 // ── Role-specific CTA ─────────────────────────────────────────────────────────
 
 function RoleCTA() {
-  const { role } = useOrg();
+  const { role, currentProject, currentOrganization } = useOrg();
   const roleGroup = getRoleGroup(role);
 
   if (roleGroup === "maintenance") {
     return (
       <div className="mb-6">
-        <Link
-          href="/modules/fix"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-teal border border-teal/30 bg-teal/5 hover:bg-teal/15 px-4 py-2 rounded-lg transition-colors"
-        >
-          <Wrench size={14} />
-          Run Fix
-        </Link>
+        <FixLaunchButton
+          context={{
+            source:    "dashboard",
+            projectId: currentProject.id,
+            orgId:     currentOrganization.id,
+            role,
+            returnTo:  "/dashboard",
+          }}
+          label="Run Fix"
+          variant="outline"
+        />
       </div>
     );
   }

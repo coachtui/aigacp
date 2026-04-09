@@ -20,6 +20,8 @@ import { MOCK_ASSETS } from "@/lib/mock/assets";
 import { MOCK_CREWS } from "@/lib/mock/crews";
 import { useOrg } from "@/providers/OrgProvider";
 import { getRoleGroup } from "@/lib/utils/roles";
+import { buildFixUrl } from "@/lib/modules/fix/launch";
+import { FixLaunchButton } from "@/components/modules/fix/FixLaunchButton";
 import type { ActivityEvent, Issue, Alert } from "@/types/domain";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -113,13 +115,15 @@ function RoleCTABar({ projectId }: { projectId: string }) {
   if (roleGroup === "maintenance") {
     return (
       <div className="mb-4 flex items-center gap-3">
-        <Link
-          href={`/modules/fix?source=project-cc`}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-teal border border-teal/30 bg-teal/5 hover:bg-teal/15 px-4 py-2 rounded-lg transition-colors"
-        >
-          <Wrench size={14} />
-          Run Fix
-        </Link>
+        <FixLaunchButton
+          context={{
+            source:    "project-command-center",
+            projectId,
+            returnTo:  `/projects/${projectId}`,
+          }}
+          label="Run Fix"
+          variant="outline"
+        />
       </div>
     );
   }
@@ -158,10 +162,11 @@ function RoleCTABar({ projectId }: { projectId: string }) {
 
 // ── issues section ────────────────────────────────────────────────────────────
 
-function IssuesSection({ issues, label, subtitle }: {
+function IssuesSection({ issues, label, subtitle, projectId }: {
   issues: Issue[];
   label: string;
   subtitle: string;
+  projectId: string;
 }) {
   const topIssues = issues.slice(0, 5);
 
@@ -198,46 +203,45 @@ function IssuesSection({ issues, label, subtitle }: {
         <div className="px-5 pb-5 text-sm text-content-muted italic">No open issues on this project.</div>
       ) : (
         <div>
-          {topIssues.map((issue) => {
-            const fixHref = issue.asset_id
-              ? `/modules/fix?issueId=${issue.id}&assetId=${issue.asset_id}&source=project-cc`
-              : null;
-
-            return (
-              <div key={issue.id} className="relative group border-t border-surface-border hover:bg-surface-overlay transition-colors">
-                <Link href={`/issues/${issue.id}`} className="absolute inset-0" aria-label={issue.title} />
-                <div className="relative flex items-center gap-3 px-5 py-3 pointer-events-none">
-                  <div className={`shrink-0 w-1.5 h-1.5 rounded-full ${ISSUE_SEVERITY_DOT[issue.severity] ?? "bg-content-muted"}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-content-primary group-hover:text-white transition-colors truncate">
-                      {issue.title}
-                    </p>
-                    {issue.asset_name && (
-                      <p className="text-xs text-content-muted mt-0.5 truncate">{issue.asset_name}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <StatusBadge status={issue.severity} />
-                    <StatusBadge status={issue.status} />
-                  </div>
+          {topIssues.map((issue) => (
+            <div key={issue.id} className="relative group border-t border-surface-border hover:bg-surface-overlay transition-colors">
+              <Link href={`/issues/${issue.id}`} className="absolute inset-0" aria-label={issue.title} />
+              <div className="relative flex items-center gap-3 px-5 py-3 pointer-events-none">
+                <div className={`shrink-0 w-1.5 h-1.5 rounded-full ${ISSUE_SEVERITY_DOT[issue.severity] ?? "bg-content-muted"}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-content-primary group-hover:text-white transition-colors truncate">
+                    {issue.title}
+                  </p>
+                  {issue.asset_name && (
+                    <p className="text-xs text-content-muted mt-0.5 truncate">{issue.asset_name}</p>
+                  )}
                 </div>
-                {fixHref && (
-                  <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 pointer-events-auto">
-                    <Link
-                      href={fixHref}
-                      className="text-[11px] font-semibold text-teal border border-teal/30 bg-teal/5 hover:bg-teal/20 px-1.5 py-0.5 rounded transition-colors"
-                    >
-                      Fix →
-                    </Link>
-                  </div>
-                )}
-                <ChevronRight
-                  size={12}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-content-muted group-hover:text-content-secondary transition-colors pointer-events-none"
-                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusBadge status={issue.severity} />
+                  <StatusBadge status={issue.status} />
+                </div>
               </div>
-            );
-          })}
+              {issue.asset_id && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 pointer-events-auto">
+                  <FixLaunchButton
+                    context={{
+                      source:    "project-command-center",
+                      issueId:   issue.id,
+                      assetId:   issue.asset_id,
+                      projectId,
+                      returnTo:  `/projects/${projectId}`,
+                    }}
+                    label="Fix →"
+                    variant="inline"
+                  />
+                </div>
+              )}
+              <ChevronRight
+                size={12}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-content-muted group-hover:text-content-secondary transition-colors pointer-events-none"
+              />
+            </div>
+          ))}
         </div>
       )}
     </Card>
@@ -373,7 +377,7 @@ export function ProjectCommandCenterClient({ projectId }: { projectId: string })
     : `${openIssues.length} open issue${openIssues.length !== 1 ? "s" : ""}`;
 
   // Left-column section ordering by role
-  const issuesSection   = <IssuesSection key="issues"   issues={openIssues}   label={issuesLabel} subtitle={issueSubtitle} />;
+  const issuesSection   = <IssuesSection key="issues"   issues={openIssues}   label={issuesLabel} subtitle={issueSubtitle} projectId={projectId} />;
   const alertsSection   = <AlertsSection key="alerts"   alerts={displayAlerts} unreadCount={unreadAlerts.length} />;
   const activitySection = <ActivitySection key="activity" events={projectActivity} />;
 
@@ -534,10 +538,14 @@ export function ProjectCommandCenterClient({ projectId }: { projectId: string })
               <p className="text-xs text-content-muted mt-0.5">Launch a module for this job</p>
             </div>
             <div className="px-5 pb-5 grid grid-cols-2 gap-2">
-              {MODULE_ACTIONS.map((action) => (
+              {MODULE_ACTIONS.map((action) => {
+              const href = action.key === "fix"
+                ? buildFixUrl({ source: "project-command-center", projectId, returnTo: `/projects/${projectId}` })
+                : action.href;
+              return (
                 <Link
                   key={action.key}
-                  href={action.href}
+                  href={href}
                   className={`group flex items-start gap-2.5 p-3 rounded-lg border border-surface-border bg-surface-overlay transition-colors ${action.hover}`}
                 >
                   <div className="mt-0.5 shrink-0">{action.icon}</div>
@@ -548,7 +556,8 @@ export function ProjectCommandCenterClient({ projectId }: { projectId: string })
                     <p className="text-[11px] text-content-muted mt-0.5 leading-snug">{action.description}</p>
                   </div>
                 </Link>
-              ))}
+              );
+            })}
             </div>
           </Card>
 
