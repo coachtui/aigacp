@@ -1,0 +1,54 @@
+import type { ModuleId } from "@/types/org";
+
+export interface ModuleDefinition {
+  id:          ModuleId;
+  label:       string;
+  description: string;
+  route:       string;
+  category:    "field_ops" | "equipment" | "data" | "diagnostics";
+  accentColor: "gold" | "teal" | "blue";
+  tagline:     string;
+}
+
+export const MODULE_REGISTRY: ModuleDefinition[] = [
+  {
+    id:          "cru",
+    label:       "CRU",
+    description: "Crew resource and utilization management",
+    tagline:     "Schedule, track, and optimize your crews in the field.",
+    route:       "/modules/cru",
+    category:    "field_ops",
+    accentColor: "gold",
+  },
+  {
+    id:          "fix",
+    label:       "Fix",
+    description: "AI-powered equipment diagnostic intelligence",
+    tagline:     "Proactive diagnostics. Fewer breakdowns. More uptime.",
+    route:       "/modules/fix",
+    category:    "diagnostics",
+    accentColor: "teal",
+  },
+  {
+    id:          "inspect",
+    label:       "Inspect",
+    description: "Field inspection workflows and reporting",
+    tagline:     "Capture, document, and sign off on inspections anywhere.",
+    route:       "/modules/inspect",
+    category:    "field_ops",
+    accentColor: "blue",
+  },
+  {
+    id:          "datum",
+    label:       "Datum",
+    description: "GPS + map overlay for field layout and crew alignment",
+    tagline:     "Fast field layout without the full survey setup.",
+    route:       "/modules/datum",
+    category:    "field_ops",
+    accentColor: "teal",
+  },
+];
+
+export function getModuleById(id: ModuleId): ModuleDefinition | undefined {
+  return MODULE_REGISTRY.find((m) => m.id === id);
+}

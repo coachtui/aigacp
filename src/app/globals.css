@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────
+   AIGA Construction Platform — Design Tokens (Tailwind v4)
+   ───────────────────────────────────────────────────────── */
+
+@theme {
+  /* Surfaces */
+  --color-surface-base:         #0B0B0D;
+  --color-surface-raised:       #141417;
+  --color-surface-overlay:      #1C1C21;
+  --color-surface-border:       #2A2A30;
+  --color-surface-border-hover: #3D3D47;
+
+  /* Brand — Gold */
+  --color-gold:        #EAB308;
+  --color-gold-hover:  #D4A200;
+
+  /* Brand — Teal */
+  --color-teal: #00CFA1;
+
+  /* Brand — Blue */
+  --color-blue-brand: #5B82D4;
+
+  /* Content / Text */
+  --color-content-primary:   #F1F1F3;
+  --color-content-secondary: #9898A6;
+  --color-content-muted:     #5C5C6E;
+  --color-content-inverse:   #0B0B0D;
+
+  /* Status */
+  --color-status-critical: #EF4444;
+  --color-status-warning:  #F59E0B;
+  --color-status-success:  #22C55E;
+  --color-status-info:     #5B82D4;
+
+  /* Border Radius */
+  --radius-card:  12px;
+  --radius-badge: 6px;
+  --radius-pill:  9999px;
+
+  /* Shadows */
+  --shadow-card:       0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 1px #2A2A30;
+  --shadow-card-gold:  0 0 0 1px #EAB308, 0 4px 16px rgba(234,179,8,0.10);
+  --shadow-panel:      -4px 0 24px rgba(0,0,0,0.6);
+  --shadow-dropdown:   0 8px 32px rgba(0,0,0,0.6), inset 0 0 0 1px #2A2A30;
+
+  /* Font Stack */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-family-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+/* Subtle overlay colors — used via CSS vars (not Tailwind tokens) */
+:root {
+  --gold-subtle:      rgba(234, 179, 8, 0.12);
+  --teal-subtle:      rgba(0, 207, 161, 0.12);
+  --blue-brand-subtle: rgba(91, 130, 212, 0.12);
+
+  /* Layout vars — readable by JS via getComputedStyle if needed */
+  --sidebar-w:           240px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h:            56px;
+  --assistant-w:         400px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Base Reset
+   ───────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  color-scheme: dark;
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-surface-base);
+  color: var(--color-content-primary);
+  font-family: var(--font-family-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Sidebar width reacts to collapsed state
+   ───────────────────────────────────────────────────────── */
+
+.sidebar-collapsed { --sidebar-w: 64px; }
+
+/* ─────────────────────────────────────────────────────────
+   Safe Area Utilities (iOS home bar / notch)
+   ───────────────────────────────────────────────────────── */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top:    env(safe-area-inset-top);    }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Scrollbars
+   ───────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar               { width: 5px; height: 5px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: var(--color-surface-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover   { background: var(--color-surface-border-hover); }
+
+/* ─────────────────────────────────────────────────────────
+   Focus
+   ───────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
