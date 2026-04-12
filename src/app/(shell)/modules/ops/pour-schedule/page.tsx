@@ -19,10 +19,11 @@ import {
 import { CreatePourModal } from "./CreatePourModal";
 import type { PourSaveAction } from "./CreatePourModal";
 import { PourCalendar } from "./PourCalendar";
+import { PourApprovalsPanel } from "./PourApprovalsPanel";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
   Loader, Truck, Users, Plus, Clock, X, ChevronDown,
-  List, Calendar,
+  List, Calendar, ClipboardCheck,
 } from "lucide-react";
 
 // ── CRU status display (legacy — CRU has its own simpler status model) ────────
@@ -46,7 +47,7 @@ type InlineAction =
 
 // ── Modal state ───────────────────────────────────────────────────────────────
 
-type ViewMode = "list" | "calendar";
+type ViewMode = "list" | "calendar" | "approvals";
 
 type ModalState =
   | { mode: "create" }
@@ -62,6 +63,8 @@ export default function PourSchedulePage() {
     pours,
     requests,
     createRequest,
+    approveRequest,
+    assignRequest,
     createPour,
     editPour,
     submitPourForApproval,
@@ -105,6 +108,14 @@ export default function PourSchedulePage() {
   const pumpCount      = activePours.filter((p) => p.pumpRequest.requested).length;
   const conflictCount  = pours.filter((p) => p.conflicts && p.status !== "Canceled" && p.status !== "Completed").length;
   const cruCount       = cruEvents.length;
+
+  // ── Pour-linked dispatch requests (pump + mason sourced from a pour) ──────
+  const pourLinkedRequests = useMemo(
+    () => requests.filter(
+      (r) => r.sourcePourId && (r.type === "pump_truck" || r.type === "mason"),
+    ),
+    [requests],
+  );
 
   // ── Sorted pours (newest/soonest first; completed last) ───────────────────
   const sortedPours = useMemo(() => {
@@ -265,6 +276,30 @@ export default function PourSchedulePage() {
               <Calendar size={13} />
               Calendar
             </button>
+            {canApprovePour(role) && (
+              <>
+                <div className="w-px h-5 bg-surface-border" />
+                <button
+                  onClick={() => setViewMode("approvals")}
+                  aria-label="Approvals view"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    viewMode === "approvals"
+                      ? "bg-surface-overlay text-content-primary"
+                      : pendingCount > 0
+                      ? "text-status-warning hover:text-status-warning/80"
+                      : "text-content-muted hover:text-content-primary"
+                  }`}
+                >
+                  <ClipboardCheck size={13} />
+                  Approvals
+                  {pendingCount > 0 && (
+                    <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-status-warning text-white text-[9px] font-bold flex items-center justify-center">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {userCanCreate && (
@@ -295,7 +330,7 @@ export default function PourSchedulePage() {
         </div>
         {canApprovePour(role) && (
           <button
-            onClick={() => setViewMode("list")}
+            onClick={() => setViewMode("approvals")}
             className={`bg-surface-raised border rounded-[var(--radius-card)] px-4 py-3 text-left w-full transition-colors ${
               pendingCount > 0
                 ? "border-status-warning/40 hover:border-status-warning/70"
@@ -317,6 +352,23 @@ export default function PourSchedulePage() {
           </div>
         )}
       </div>
+
+      {/* ── Approvals View ─────────────────────────────────────────────────── */}
+      {viewMode === "approvals" && (
+        <PourApprovalsPanel
+          pendingPours={pours.filter((p) => p.status === "Pending Approval")}
+          pourRequests={pourLinkedRequests}
+          allPours={pours}
+          role={role}
+          userId={currentUser.id}
+          userName={currentUser.name}
+          cruOrgId={currentOrganization.cruOrgId ?? currentOrganization.id}
+          onApprovePour={(id) => approvePour(id, role, currentUser.id, currentUser.name)}
+          onRejectPour={(id, reason) => rejectPour(id, reason, role, currentUser.id, currentUser.name)}
+          onApproveRequest={approveRequest}
+          onAssignRequest={assignRequest}
+        />
+      )}
 
       {/* ── Calendar View ──────────────────────────────────────────────────── */}
       {viewMode === "calendar" && (

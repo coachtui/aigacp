@@ -42,8 +42,12 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function RequestsPage() {
-  const { requests, approveRequest, assignRequest } = useOps();
+  const { requests: allRequests, approveRequest, assignRequest } = useOps();
   const { currentOrganization } = useOrg();
+
+  // Pour-linked pump/mason requests are managed in the Pour Schedule hub.
+  // This page handles equipment and mechanics requests only.
+  const requests = allRequests.filter((r) => !r.sourcePourId);
   // Use the CRU-specific UUID when available; fall back to platform ID.
   const cruOrgId = currentOrganization.cruOrgId ?? currentOrganization.id;
 
@@ -112,7 +116,9 @@ export default function RequestsPage() {
         </Link>
         <div>
           <h1 className="text-lg font-bold text-content-primary">Requests</h1>
-          <p className="text-xs text-content-muted">{requests.length} total</p>
+          <p className="text-xs text-content-muted">
+            Equipment &amp; mechanics · {requests.length} open
+          </p>
         </div>
       </div>
 
