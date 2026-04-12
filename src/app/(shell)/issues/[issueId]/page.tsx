@@ -14,6 +14,7 @@ const MODULE_LABEL: Record<ModuleId, string> = {
   cru:     "CRU",
   inspect: "Inspect",
   datum:   "Datum",
+  ops:     "OPS",
 };
 
 const MODULE_COLOR: Record<ModuleId, string> = {
@@ -21,6 +22,7 @@ const MODULE_COLOR: Record<ModuleId, string> = {
   cru:     "text-gold       border-gold/30       bg-gold/10",
   inspect: "text-blue-brand border-blue-brand/30 bg-blue-brand/10",
   datum:   "text-teal       border-teal/30       bg-teal/10",
+  ops:     "text-gold       border-gold/30       bg-gold/10",
 };
 
 function formatDate(iso: string): string {

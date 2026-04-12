@@ -2,6 +2,7 @@
 
 import { OrgProvider } from "@/providers/OrgProvider";
 import { UIProvider } from "@/providers/UIProvider";
+import { OpsProvider } from "@/providers/OpsProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -38,7 +39,9 @@ export default function ShellRootLayout({ children }: { children: React.ReactNod
   return (
     <OrgProvider>
       <UIProvider>
-        <ShellLayout>{children}</ShellLayout>
+        <OpsProvider>
+          <ShellLayout>{children}</ShellLayout>
+        </OpsProvider>
       </UIProvider>
     </OrgProvider>
   );

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Building2, Truck, HardHat, Activity,
-  MapPin, Wrench, Users, BarChart3, ClipboardCheck,
+  MapPin, Wrench, Users, BarChart3, ClipboardCheck, ClipboardList,
   Building, UserCog, Lock, ChevronLeft, ChevronRight,
   AlertCircle, Bell,
 } from "lucide-react";
@@ -28,6 +28,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Lock:            <Lock            size={16} />,
   AlertCircle:     <AlertCircle     size={16} />,
   Bell:            <Bell            size={16} />,
+  ClipboardList:   <ClipboardList   size={16} />,
 };
 
 export function Sidebar() {

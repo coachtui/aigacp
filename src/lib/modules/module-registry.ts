@@ -5,7 +5,7 @@ export interface ModuleDefinition {
   label:       string;
   description: string;
   route:       string;
-  category:    "field_ops" | "equipment" | "data" | "diagnostics";
+  category:    "field_ops" | "equipment" | "data" | "diagnostics" | "operations";
   accentColor: "gold" | "teal" | "blue";
   tagline:     string;
 }
@@ -46,6 +46,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     route:       "/modules/datum",
     category:    "field_ops",
     accentColor: "teal",
+  },
+  {
+    id:          "ops",
+    label:       "OPS",
+    description: "Operations and workflow engine",
+    tagline:     "Work orders, field requests, and pour schedules — coordinated.",
+    route:       "/modules/ops",
+    category:    "operations",
+    accentColor: "gold",
   },
 ];
 
