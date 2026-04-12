@@ -17,9 +17,11 @@ import {
   canSubmitForApproval,
 } from "@/lib/ops/pourRules";
 import { CreatePourModal } from "./CreatePourModal";
+import { PourCalendar } from "./PourCalendar";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
   Loader, Truck, Users, Plus, Clock, X, ChevronDown,
+  List, Calendar,
 } from "lucide-react";
 
 // ── CRU status display (legacy — CRU has its own simpler status model) ────────
@@ -43,9 +45,12 @@ type InlineAction =
 
 // ── Modal state ───────────────────────────────────────────────────────────────
 
+type ViewMode = "list" | "calendar";
+
 type ModalState =
   | { mode: "create" }
   | { mode: "edit"; pour: PourEvent }
+  | { mode: "detail"; pour: PourEvent }
   | null;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -84,6 +89,9 @@ export default function PourSchedulePage() {
   const [masonPickerRowId, setMasonPickerRowId] = useState<string | null>(null);
   const [masonQty,         setMasonQty]         = useState(4);
   const [confirmedRows,    setConfirmedRows]     = useState<Record<string, Set<"pump" | "mason">>>({});
+
+  // ── View mode ─────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // ── Workflow UI state ─────────────────────────────────────────────────────
   const [inlineAction, setInlineAction] = useState<InlineAction>(null);
@@ -181,7 +189,7 @@ export default function PourSchedulePage() {
   function handleModalSubmit(input: import("@/lib/ops/types").CreatePourInput, asDraft: boolean) {
     if (modal?.mode === "edit") {
       editPour(modal.pour.id, input, role, currentUser.id);
-    } else {
+    } else if (modal?.mode === "create") {
       createPour({ ...input, createdBy: currentUser.id, createdByName: currentUser.name }, asDraft);
     }
     setModal(null);
@@ -221,15 +229,46 @@ export default function PourSchedulePage() {
           </div>
         </div>
 
-        {userCanCreate && (
-          <button
-            onClick={() => setModal({ mode: "create" })}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gold hover:bg-gold-hover text-content-inverse transition-colors"
-          >
-            <Plus size={13} />
-            Create Pour
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-surface-border overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "list"
+                  ? "bg-surface-overlay text-content-primary"
+                  : "text-content-muted hover:text-content-primary"
+              }`}
+            >
+              <List size={13} />
+              List
+            </button>
+            <div className="w-px h-5 bg-surface-border" />
+            <button
+              onClick={() => setViewMode("calendar")}
+              aria-label="Calendar view"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "calendar"
+                  ? "bg-surface-overlay text-content-primary"
+                  : "text-content-muted hover:text-content-primary"
+              }`}
+            >
+              <Calendar size={13} />
+              Calendar
+            </button>
+          </div>
+
+          {userCanCreate && (
+            <button
+              onClick={() => setModal({ mode: "create" })}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gold hover:bg-gold-hover text-content-inverse transition-colors"
+            >
+              <Plus size={13} />
+              Create Pour
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Summary bar ────────────────────────────────────────────────────── */}
@@ -266,7 +305,18 @@ export default function PourSchedulePage() {
         )}
       </div>
 
-      {/* ── OPS Pour Table ─────────────────────────────────────────────────── */}
+      {/* ── Calendar View ──────────────────────────────────────────────────── */}
+      {viewMode === "calendar" && (
+        <div className="mb-6">
+          <PourCalendar
+            pours={pours}
+            onPourClick={(pour) => setModal({ mode: "detail", pour })}
+          />
+        </div>
+      )}
+
+      {/* ── OPS Pour Table (List View) ──────────────────────────────────────── */}
+      {viewMode === "list" && (
       <div className="bg-surface-raised border border-surface-border rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-card)] mb-6">
         <div className="px-5 py-3 border-b border-surface-border flex items-center gap-2">
           <span className="text-xs font-bold text-content-primary">OPS Pours</span>
@@ -429,6 +479,7 @@ export default function PourSchedulePage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* ── CRU Events Table (preserved existing display behavior) ──────────── */}
       {(cruEvents.length > 0 || loadingCru) && (
@@ -516,13 +567,26 @@ export default function PourSchedulePage() {
       )}
 
       {/* ── Create / Edit modal ───────────────────────────────────────────── */}
-      {modal && (
+      {(modal?.mode === "create" || modal?.mode === "edit") && (
         <CreatePourModal
           initialData={modal.mode === "edit" ? modal.pour : undefined}
           onClose={() => setModal(null)}
           onSubmit={handleModalSubmit}
           role={role}
           userId={currentUser.id}
+        />
+      )}
+
+      {/* ── Pour detail panel (calendar click-through) ───────────────────── */}
+      {modal?.mode === "detail" && (
+        <PourDetailModal
+          pour={modal.pour}
+          onClose={() => setModal(null)}
+          onEdit={
+            canEditPour(role, modal.pour, currentUser.id)
+              ? () => setModal({ mode: "edit", pour: modal.pour })
+              : undefined
+          }
         />
       )}
     </PageContainer>
@@ -795,6 +859,147 @@ function InlineActionForm({ action, onReasonChange, onConfirm, onCancel }: Inlin
         >
           Never mind
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Pour detail modal (calendar click-through) ────────────────────────────────
+
+interface PourDetailModalProps {
+  pour:    PourEvent;
+  onClose: () => void;
+  onEdit?: () => void;
+}
+
+function PourDetailModal({ pour, onClose, onEdit }: PourDetailModalProps) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal
+      aria-label="Pour details"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden
+      />
+
+      {/* Panel */}
+      <div className="relative z-10 w-full max-w-sm bg-surface-raised border border-surface-border rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-surface-border">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted mb-0.5">
+              Pour Details
+            </p>
+            <h2 className="text-sm font-bold text-content-primary truncate">{pour.location}</h2>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`inline-flex items-center text-[10px] font-bold uppercase tracking-widest border rounded-[var(--radius-badge)] px-1.5 py-0.5 ${POUR_STATUS_BADGE[pour.status]}`}
+            >
+              {pour.status}
+            </span>
+            <button
+              onClick={onClose}
+              className="text-content-muted hover:text-content-primary transition-colors"
+              aria-label="Close"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-3">
+
+          {/* Date / Time */}
+          <div className="flex items-start gap-3">
+            <Clock size={14} className="text-content-muted mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-content-primary">{pour.date}</p>
+              <p className="text-xs text-content-muted">{pour.time}</p>
+            </div>
+          </div>
+
+          {/* Pour type + yardage */}
+          <div className="flex items-center gap-3 text-xs text-content-secondary">
+            <Droplets size={14} className="text-content-muted shrink-0" />
+            <span>
+              <span className="font-semibold text-content-primary">{pour.pourType}</span>
+              <span className="text-content-muted ml-2">{pour.yardage} yd³</span>
+              {pour.estimatedDuration && (
+                <span className="text-content-muted ml-2">· ~{pour.estimatedDuration}</span>
+              )}
+            </span>
+          </div>
+
+          {/* Resources */}
+          {(pour.pumpRequest.requested || pour.masonRequest.requested) && (
+            <div className="flex flex-col gap-1.5 pl-0.5">
+              {pour.pumpRequest.requested && (
+                <div className="flex items-center gap-2 text-xs text-content-secondary">
+                  <Truck size={13} className="text-gold shrink-0" />
+                  <span>
+                    Pump required
+                    {pour.pumpRequest.pumpType && (
+                      <span className="text-content-muted ml-1">({pour.pumpRequest.pumpType})</span>
+                    )}
+                  </span>
+                </div>
+              )}
+              {pour.masonRequest.requested && (
+                <div className="flex items-center gap-2 text-xs text-content-secondary">
+                  <Users size={13} className="text-content-muted shrink-0" />
+                  <span>
+                    {pour.masonRequest.masonCount ?? "?"} masons requested
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notes */}
+          {pour.notes && (
+            <p className="text-xs text-content-muted border-t border-surface-border pt-3">
+              {pour.notes}
+            </p>
+          )}
+
+          {/* Meta */}
+          <div className="border-t border-surface-border pt-3 space-y-1">
+            <p className="text-[10px] text-content-muted">
+              Created by <span className="text-content-secondary">{pour.createdByName}</span>
+            </p>
+            {pour.approvedByName && (
+              <p className="text-[10px] text-content-muted">
+                Approved by <span className="text-content-secondary">{pour.approvedByName}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-surface-border flex items-center justify-end gap-2">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-surface-border text-content-secondary hover:border-gold/30 hover:text-gold transition-colors"
+            >
+              Edit
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-surface-border text-content-secondary hover:text-content-primary transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
