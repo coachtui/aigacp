@@ -294,16 +294,21 @@ export default function PourSchedulePage() {
           </p>
         </div>
         {canApprovePour(role) && (
-          <div className={`bg-surface-raised border rounded-[var(--radius-card)] px-4 py-3 ${
-            pendingCount > 0 ? "border-status-warning/40" : "border-surface-border"
-          }`}>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`bg-surface-raised border rounded-[var(--radius-card)] px-4 py-3 text-left w-full transition-colors ${
+              pendingCount > 0
+                ? "border-status-warning/40 hover:border-status-warning/70"
+                : "border-surface-border hover:border-surface-border/70"
+            }`}
+          >
             <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${
               pendingCount > 0 ? "text-status-warning" : "text-content-muted"
             }`}>Pending Approval</p>
             <p className={`text-xl font-bold ${pendingCount > 0 ? "text-status-warning" : "text-content-primary"}`}>
               {pendingCount}
             </p>
-          </div>
+          </button>
         )}
         {conflictCount > 0 && (
           <div className="bg-surface-raised border border-status-warning/30 rounded-[var(--radius-card)] px-4 py-3">
