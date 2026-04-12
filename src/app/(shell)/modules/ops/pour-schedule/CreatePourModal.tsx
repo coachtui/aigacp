@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import type { PourEvent, CreatePourInput } from "@/lib/ops/types";
-import type { UserRole } from "@/types/org";
+import type { ProjectContext, UserRole } from "@/types/org";
 import { POUR_TYPE_OPTIONS, canSubmitForApproval, isAdminRole, POUR_STATUS } from "@/lib/ops/pourRules";
 
 /** How the save action should be interpreted by the caller. */
@@ -11,15 +11,18 @@ export type PourSaveAction = "draft" | "submit" | "preserve";
 
 interface Props {
   /** If provided, form is pre-filled for editing. */
-  initialData?: PourEvent;
-  onClose:      () => void;
-  onSubmit:     (input: CreatePourInput, action: PourSaveAction) => void;
-  role:         UserRole;
-  userId:       string;
+  initialData?:      PourEvent;
+  onClose:           () => void;
+  onSubmit:          (input: CreatePourInput, action: PourSaveAction) => void;
+  role:              UserRole;
+  userId:            string;
+  orgId:             string;
+  /** Jobsites this user is allowed to order pours for (pre-filtered by getJobsitesForUser). */
+  availableJobsites: ProjectContext[];
 }
 
 interface FormState {
-  location:          string;
+  jobsiteId:         string;
   date:              string;
   time:              string;
   pourType:          string;
@@ -37,14 +40,14 @@ interface FormState {
 function toFormState(pour?: PourEvent): FormState {
   if (!pour) {
     return {
-      location: "", date: "", time: "07:00", pourType: POUR_TYPE_OPTIONS[0],
+      jobsiteId: "", date: "", time: "07:00", pourType: POUR_TYPE_OPTIONS[0],
       yardage: "", estimatedDuration: "", notes: "",
       pumpRequested: false, pumpType: "", pumpNotes: "",
       masonRequested: false, masonCount: "", masonNotes: "",
     };
   }
   return {
-    location:          pour.location,
+    jobsiteId:         pour.jobsiteId ?? "",
     date:              pour.date,
     time:              pour.time,
     pourType:          pour.pourType,
@@ -60,7 +63,7 @@ function toFormState(pour?: PourEvent): FormState {
   };
 }
 
-export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }: Props) {
+export function CreatePourModal({ initialData, onClose, onSubmit, role, userId, orgId, availableJobsites }: Props) {
   const isEdit         = !!initialData;
   const currentStatus  = initialData?.status;
   const isAdmin        = isAdminRole(role);
@@ -97,7 +100,7 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
 
   function validate(): boolean {
     const next: typeof errors = {};
-    if (!form.location.trim())      next.location  = "Required";
+    if (!form.jobsiteId)            next.jobsiteId = "Select a jobsite";
     if (!form.date)                 next.date      = "Required";
     if (!form.time)                 next.time      = "Required";
     if (!form.pourType)             next.pourType  = "Required";
@@ -112,8 +115,11 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
   }
 
   function buildInput(): CreatePourInput {
+    const jobsite = availableJobsites.find((j) => j.id === form.jobsiteId);
     return {
-      location:          form.location.trim(),
+      orgId:             orgId,
+      jobsiteId:         form.jobsiteId,
+      location:          jobsite?.name ?? form.jobsiteId,
       date:              form.date,
       time:              form.time,
       pourType:          form.pourType as CreatePourInput["pourType"],
@@ -167,7 +173,7 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
             </h2>
             <p className="text-xs text-content-muted mt-0.5">
               {isEdit
-                ? `Editing ${initialData!.status} pour — ${initialData!.location}`
+                ? `Editing ${initialData!.status} pour — ${initialData!.location || "draft"}`
                 : "Add a new pour to the schedule"}
             </p>
           </div>
@@ -196,14 +202,22 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
           {/* Core details */}
           <Section title="Pour Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Location *" error={errors.location} className="sm:col-span-2">
-                <input
-                  type="text"
-                  placeholder="e.g. Highland Tower — Level 5"
-                  value={form.location}
-                  onChange={(e) => set("location", e.target.value)}
-                  className={inputCls(!!errors.location)}
-                />
+              <Field label="Jobsite *" error={errors.jobsiteId} className="sm:col-span-2">
+                <select
+                  value={form.jobsiteId}
+                  onChange={(e) => set("jobsiteId", e.target.value)}
+                  className={inputCls(!!errors.jobsiteId)}
+                >
+                  <option value="" disabled>Select a jobsite…</option>
+                  {availableJobsites.map((j) => (
+                    <option key={j.id} value={j.id}>{j.name}</option>
+                  ))}
+                </select>
+                {availableJobsites.length === 0 && (
+                  <p className="text-[10px] text-status-warning mt-1">
+                    No jobsites assigned to your account. Contact an admin.
+                  </p>
+                )}
               </Field>
 
               <Field label="Date *" error={errors.date}>

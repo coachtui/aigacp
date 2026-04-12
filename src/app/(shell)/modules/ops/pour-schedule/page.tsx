@@ -20,6 +20,7 @@ import { CreatePourModal } from "./CreatePourModal";
 import type { PourSaveAction } from "./CreatePourModal";
 import { PourCalendar } from "./PourCalendar";
 import { PourApprovalsPanel } from "./PourApprovalsPanel";
+import { getJobsitesForUser } from "@/lib/ops/jobsites";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
   Loader, Truck, Users, Plus, Clock, X, ChevronDown,
@@ -58,7 +59,12 @@ type ModalState =
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PourSchedulePage() {
-  const { currentOrganization, currentUser, role } = useOrg();
+  const { currentOrganization, currentUser, role, availableProjects } = useOrg();
+
+  const availableJobsites = useMemo(
+    () => getJobsitesForUser(currentOrganization.id, currentUser.id, role, availableProjects),
+    [currentOrganization.id, currentUser.id, role, availableProjects],
+  );
   const {
     pours,
     requests,
@@ -642,6 +648,8 @@ export default function PourSchedulePage() {
           onSubmit={handleModalSubmit}
           role={role}
           userId={currentUser.id}
+          orgId={currentOrganization.id}
+          availableJobsites={availableJobsites}
         />
       )}
 

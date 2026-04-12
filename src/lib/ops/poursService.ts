@@ -33,6 +33,8 @@ const STORAGE_KEY = "aigacp:ops:pours";
 const SEED_POURS: PourEvent[] = [
   {
     id:                   "pour_001",
+    orgId:                "org_aiga_001",
+    jobsiteId:            "proj_highland_002",
     location:             "Highland Tower — Phase 2",
     date:                 "2026-04-12",
     time:                 "07:00",
@@ -54,6 +56,8 @@ const SEED_POURS: PourEvent[] = [
   },
   {
     id:                   "pour_002",
+    orgId:                "org_aiga_001",
+    jobsiteId:            "proj_riverside_006",
     location:             "Riverside District Parking",
     date:                 "2026-04-12",
     time:                 "06:30",
@@ -73,6 +77,8 @@ const SEED_POURS: PourEvent[] = [
   },
   {
     id:                   "pour_003",
+    orgId:                "org_aiga_001",
+    jobsiteId:            "proj_eastside_007",
     location:             "Eastside Medical Campus",
     date:                 "2026-04-14",
     time:                 "07:30",
@@ -89,6 +95,8 @@ const SEED_POURS: PourEvent[] = [
   },
   {
     id:                   "pour_004",
+    orgId:                "org_aiga_001",
+    jobsiteId:            "proj_highland_002",
     location:             "Highland Tower — Phase 2",
     date:                 "2026-04-08",
     time:                 "06:00",
@@ -166,6 +174,8 @@ export function createPour(input: CreatePourInput, asDraft: boolean): PourEvent 
   const pour: PourEvent = {
     ...input,
     id:                   crypto.randomUUID(),
+    orgId:                input.orgId,
+    jobsiteId:            input.jobsiteId,
     status:               asDraft ? POUR_STATUS.DRAFT : POUR_STATUS.PENDING_APPROVAL,
     requestedAt:          new Date().toISOString(),
     relatedWorkOrderIds:  [],

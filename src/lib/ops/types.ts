@@ -65,6 +65,11 @@ export interface MasonRequest {
 
 export interface PourEvent {
   id:                 string;
+  /** Org this pour belongs to — used as scope boundary for Phase 3 RLS. */
+  orgId:              string;
+  /** Resolved project ID for this jobsite (links to org project list). */
+  jobsiteId?:         string;
+  /** Display name of the jobsite — derived from the project name at creation time. */
   location:           string;
   date:               string;   // "YYYY-MM-DD"
   time:               string;   // "HH:MM"
@@ -101,7 +106,9 @@ export interface PourEvent {
 
 /** Input shape for creating a new pour — workflow fields are computed by the service. */
 export interface CreatePourInput {
-  location:          string;
+  orgId:             string;
+  jobsiteId:         string;
+  location:          string;   // display name — derived from the selected jobsite
   date:              string;
   time:              string;
   pourType:          PourType;
