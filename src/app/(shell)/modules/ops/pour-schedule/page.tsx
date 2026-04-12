@@ -276,6 +276,7 @@ export default function PourSchedulePage() {
               <Calendar size={13} />
               Calendar
             </button>
+            {/* TODO: repurpose this toggle slot — approvals entry point is the summary tile for now
             {canApprovePour(role) && (
               <>
                 <div className="w-px h-5 bg-surface-border" />
@@ -300,6 +301,7 @@ export default function PourSchedulePage() {
                 </button>
               </>
             )}
+            */}
           </div>
 
           {userCanCreate && (
