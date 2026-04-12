@@ -1,8 +1,8 @@
 import { MOCK_WORK_ORDERS, MOCK_REQUESTS, MOCK_POUR_EVENTS } from "./mock-data";
 import type {
-  WorkOrder,  WorkOrderStatus,
-  Request,    RequestStatus,
-  PourEvent,
+  WorkOrder,        WorkOrderStatus,
+  Request,          RequestStatus,
+  LegacyPourEvent,
 } from "./types";
 
 // ── Internal mutable state ────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ import type {
 
 let workOrders: WorkOrder[] = [...MOCK_WORK_ORDERS];
 let requests:   Request[]   = [...MOCK_REQUESTS];
-let pourEvents: PourEvent[]  = [...MOCK_POUR_EVENTS];
+let pourEvents: LegacyPourEvent[] = [...MOCK_POUR_EVENTS];
 
 // ── Transition rules ──────────────────────────────────────────────────────────
 
@@ -119,14 +119,14 @@ export function updateRequestStatus(
   return updated;
 }
 
-// ── Pour Schedule ─────────────────────────────────────────────────────────────
+// ── Pour Schedule (legacy API route — UI uses poursService instead) ───────────
 
-export function getPourSchedule(): PourEvent[] {
+export function getPourSchedule(): LegacyPourEvent[] {
   return pourEvents;
 }
 
-export function createPourEvent(data: Omit<PourEvent, "id">): PourEvent {
-  const event: PourEvent = { ...data, id: crypto.randomUUID() };
+export function createPourEvent(data: Omit<LegacyPourEvent, "id">): LegacyPourEvent {
+  const event: LegacyPourEvent = { ...data, id: crypto.randomUUID() };
   pourEvents = [...pourEvents, event];
   return event;
 }

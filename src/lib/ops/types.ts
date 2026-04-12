@@ -2,7 +2,10 @@ export type WorkOrderStatus   = "open" | "in_progress" | "waiting_parts" | "comp
 export type WorkOrderPriority = "low" | "medium" | "high";
 export type RequestType       = "mason" | "pump_truck" | "equipment";
 export type RequestStatus     = "pending" | "approved" | "assigned";
-export type PourEventStatus   = "planned" | "confirmed" | "completed";
+
+// Legacy — kept for CRU-event display in the pour schedule (CRU has its own
+// simplified status model). New OPS pours use PourStatus from pourRules.ts.
+export type PourEventStatus = "planned" | "confirmed" | "completed";
 
 export interface WorkOrder {
   id:              string;
@@ -40,9 +43,80 @@ export interface Request {
   assignedToRole?:     string;
   /** Number of workers / units requested (e.g. mason headcount) */
   requestedCount?:     number;
+  /** ID of the PourEvent that auto-generated this request on approval. */
+  sourcePourId?:       string;
+}
+
+// ── Pour workflow types ───────────────────────────────────────────────────────
+
+import type { PourStatus, PourType } from "./pourRules";
+
+export interface PumpRequest {
+  requested:  boolean;
+  pumpType?:  string;
+  notes?:     string;
+}
+
+export interface MasonRequest {
+  requested:   boolean;
+  masonCount?: number;
+  notes?:      string;
 }
 
 export interface PourEvent {
+  id:                 string;
+  location:           string;
+  date:               string;   // "YYYY-MM-DD"
+  time:               string;   // "HH:MM"
+  pourType:           PourType;
+  yardage:            number;
+  estimatedDuration?: string;
+  notes?:             string;
+  // Planned resource needs
+  pumpRequest:        PumpRequest;
+  masonRequest:       MasonRequest;
+  // Workflow
+  status:             PourStatus;
+  createdBy:          string;   // user ID
+  createdByName:      string;
+  requestedAt:        string;   // ISO datetime
+  // Approval
+  approvedBy?:        string;
+  approvedByName?:    string;
+  approvedAt?:        string;
+  rejectedBy?:        string;
+  rejectedByName?:    string;
+  rejectionReason?:   string;
+  // Cancellation
+  canceledBy?:        string;
+  canceledByName?:    string;
+  canceledAt?:        string;
+  cancellationReason?: string;
+  // Future-readiness — not wired yet; present for model completeness
+  relatedWorkOrderIds:  string[];
+  equipmentAssignments: string[];
+  /** Reserved: resource clash detection */
+  conflicts?:         boolean;
+}
+
+/** Input shape for creating a new pour — workflow fields are computed by the service. */
+export interface CreatePourInput {
+  location:          string;
+  date:              string;
+  time:              string;
+  pourType:          PourType;
+  yardage:           number;
+  estimatedDuration?: string;
+  notes?:            string;
+  pumpRequest:       PumpRequest;
+  masonRequest:      MasonRequest;
+  createdBy:         string;
+  createdByName:     string;
+}
+
+// Legacy PourEvent shape used by the API-layer service.ts (for the /api/ops/pour-schedule
+// route). Kept separately so the API route doesn't need to be changed in Phase 1–2.
+export interface LegacyPourEvent {
   id:           string;
   jobsite:      string;
   date:         string;
@@ -50,6 +124,5 @@ export interface PourEvent {
   pumpRequired: boolean;
   crewRequired: string;
   status:       PourEventStatus;
-  /** Reserved: future overlap / resource clash detection */
   conflicts?:   boolean;
 }
