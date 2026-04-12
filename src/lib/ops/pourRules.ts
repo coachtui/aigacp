@@ -71,7 +71,7 @@ const APPROVER_ROLES: readonly UserRole[] = ["owner", "admin"];
 
 const ADMIN_ROLES: readonly UserRole[] = ["owner", "admin"];
 
-function isAdmin(role: UserRole): boolean {
+export function isAdminRole(role: UserRole): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role);
 }
 
@@ -99,8 +99,8 @@ export function canCancelPour(
 ): boolean {
   if (pour.status === POUR_STATUS.COMPLETED) return false;
   if (pour.status === POUR_STATUS.CANCELED)  return false;
-  if (pour.status === POUR_STATUS.IN_PROGRESS) return isAdmin(role);
-  if (isAdmin(role)) return true;
+  if (pour.status === POUR_STATUS.IN_PROGRESS) return isAdminRole(role);
+  if (isAdminRole(role)) return true;
   const ownCancelable: PourStatus[] = [
     POUR_STATUS.DRAFT,
     POUR_STATUS.PENDING_APPROVAL,
@@ -113,7 +113,8 @@ export function canCancelPour(
  * Edit rules:
  *  - Completed / In Progress / Canceled: nobody
  *  - Admin: any other status
- *  - Others: own Draft or Rejected pours only
+ *  - Others: own Draft, Rejected, OR Approved pours
+ *    (editing an Approved pour as a non-admin triggers re-approval — enforced in the service)
  */
 export function canEditPour(
   role: UserRole,
@@ -122,11 +123,9 @@ export function canEditPour(
 ): boolean {
   const locked: PourStatus[] = [POUR_STATUS.COMPLETED, POUR_STATUS.IN_PROGRESS, POUR_STATUS.CANCELED];
   if (locked.includes(pour.status)) return false;
-  if (isAdmin(role)) return true;
-  return (
-    pour.createdBy === userId &&
-    (pour.status === POUR_STATUS.DRAFT || pour.status === POUR_STATUS.REJECTED)
-  );
+  if (isAdminRole(role)) return true;
+  const ownEditable: PourStatus[] = [POUR_STATUS.DRAFT, POUR_STATUS.REJECTED, POUR_STATUS.APPROVED];
+  return pour.createdBy === userId && ownEditable.includes(pour.status);
 }
 
 /**
@@ -140,7 +139,7 @@ export function canSubmitForApproval(
 ): boolean {
   const submittable: PourStatus[] = [POUR_STATUS.DRAFT, POUR_STATUS.REJECTED];
   if (!submittable.includes(pour.status)) return false;
-  return pour.createdBy === userId || isAdmin(role);
+  return pour.createdBy === userId || isAdminRole(role);
 }
 
 // ── Status badge styles ───────────────────────────────────────────────────────

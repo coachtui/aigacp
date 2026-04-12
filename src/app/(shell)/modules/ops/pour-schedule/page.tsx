@@ -17,6 +17,7 @@ import {
   canSubmitForApproval,
 } from "@/lib/ops/pourRules";
 import { CreatePourModal } from "./CreatePourModal";
+import type { PourSaveAction } from "./CreatePourModal";
 import { PourCalendar } from "./PourCalendar";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
@@ -186,11 +187,18 @@ export default function PourSchedulePage() {
 
   // ── Create / Edit modal handlers ──────────────────────────────────────────
 
-  function handleModalSubmit(input: import("@/lib/ops/types").CreatePourInput, asDraft: boolean) {
+  function handleModalSubmit(input: import("@/lib/ops/types").CreatePourInput, action: PourSaveAction) {
     if (modal?.mode === "edit") {
-      editPour(modal.pour.id, input, role, currentUser.id);
+      if (action === "preserve") {
+        editPour(modal.pour.id, input, role, currentUser.id, { preserveStatus: true });
+      } else if (action === "submit") {
+        editPour(modal.pour.id, input, role, currentUser.id, { submitForApproval: true });
+      } else {
+        // "draft" — save without changing status (keeps Draft/Rejected as-is)
+        editPour(modal.pour.id, input, role, currentUser.id);
+      }
     } else if (modal?.mode === "create") {
-      createPour({ ...input, createdBy: currentUser.id, createdByName: currentUser.name }, asDraft);
+      createPour({ ...input, createdBy: currentUser.id, createdByName: currentUser.name }, action === "draft");
     }
     setModal(null);
   }
@@ -310,6 +318,7 @@ export default function PourSchedulePage() {
         <div className="mb-6">
           <PourCalendar
             pours={pours}
+            requests={requests}
             onPourClick={(pour) => setModal({ mode: "detail", pour })}
           />
         </div>
@@ -581,6 +590,7 @@ export default function PourSchedulePage() {
       {modal?.mode === "detail" && (
         <PourDetailModal
           pour={modal.pour}
+          requests={requests.filter((r) => r.sourcePourId === modal.pour.id)}
           onClose={() => setModal(null)}
           onEdit={
             canEditPour(role, modal.pour, currentUser.id)
@@ -867,12 +877,16 @@ function InlineActionForm({ action, onReasonChange, onConfirm, onCancel }: Inlin
 // ── Pour detail modal (calendar click-through) ────────────────────────────────
 
 interface PourDetailModalProps {
-  pour:    PourEvent;
-  onClose: () => void;
-  onEdit?: () => void;
+  pour:     PourEvent;
+  /** Dispatch requests linked to this pour (already filtered to sourcePourId). */
+  requests: OpsRequest[];
+  onClose:  () => void;
+  onEdit?:  () => void;
 }
 
-function PourDetailModal({ pour, onClose, onEdit }: PourDetailModalProps) {
+function PourDetailModal({ pour, requests, onClose, onEdit }: PourDetailModalProps) {
+  const pumpReq  = requests.find((r) => r.type === "pump_truck");
+  const masonReq = requests.find((r) => r.type === "mason");
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -938,26 +952,63 @@ function PourDetailModal({ pour, onClose, onEdit }: PourDetailModalProps) {
             </span>
           </div>
 
-          {/* Resources */}
+          {/* Resources + assignment */}
           {(pour.pumpRequest.requested || pour.masonRequest.requested) && (
-            <div className="flex flex-col gap-1.5 pl-0.5">
+            <div className="flex flex-col gap-2 border-t border-surface-border pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted">Resources</p>
+
               {pour.pumpRequest.requested && (
-                <div className="flex items-center gap-2 text-xs text-content-secondary">
-                  <Truck size={13} className="text-gold shrink-0" />
-                  <span>
-                    Pump required
-                    {pour.pumpRequest.pumpType && (
-                      <span className="text-content-muted ml-1">({pour.pumpRequest.pumpType})</span>
+                <div className="flex items-start gap-2">
+                  <Truck size={13} className={`shrink-0 mt-0.5 ${pumpReq?.status === "assigned" ? "text-status-success" : "text-gold"}`} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-content-secondary">
+                      Pump truck
+                      {pour.pumpRequest.pumpType && (
+                        <span className="text-content-muted ml-1">({pour.pumpRequest.pumpType})</span>
+                      )}
+                    </p>
+                    {pumpReq ? (
+                      <p className={`text-xs font-semibold mt-0.5 ${
+                        pumpReq.status === "assigned" ? "text-status-success" :
+                        pumpReq.status === "approved" ? "text-gold" :
+                        "text-content-muted"
+                      }`}>
+                        {pumpReq.status === "assigned"
+                          ? (pumpReq.assignedToLabel ?? "Assigned")
+                          : pumpReq.status === "approved"
+                          ? "Approved — awaiting dispatch"
+                          : "Pending dispatch"}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-content-muted italic mt-0.5">Not yet dispatched</p>
                     )}
-                  </span>
+                  </div>
                 </div>
               )}
+
               {pour.masonRequest.requested && (
-                <div className="flex items-center gap-2 text-xs text-content-secondary">
-                  <Users size={13} className="text-content-muted shrink-0" />
-                  <span>
-                    {pour.masonRequest.masonCount ?? "?"} masons requested
-                  </span>
+                <div className="flex items-start gap-2">
+                  <Users size={13} className={`shrink-0 mt-0.5 ${masonReq?.status === "assigned" ? "text-status-success" : "text-content-muted"}`} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-content-secondary">
+                      {pour.masonRequest.masonCount ?? "?"} masons
+                    </p>
+                    {masonReq ? (
+                      <p className={`text-xs font-semibold mt-0.5 ${
+                        masonReq.status === "assigned" ? "text-status-success" :
+                        masonReq.status === "approved" ? "text-gold" :
+                        "text-content-muted"
+                      }`}>
+                        {masonReq.status === "assigned"
+                          ? (masonReq.assignedToLabel ?? "Assigned")
+                          : masonReq.status === "approved"
+                          ? "Approved — awaiting dispatch"
+                          : "Pending dispatch"}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-content-muted italic mt-0.5">Not yet dispatched</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

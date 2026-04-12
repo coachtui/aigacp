@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 import type { PourEvent, CreatePourInput } from "@/lib/ops/types";
 import type { UserRole } from "@/types/org";
-import { POUR_TYPE_OPTIONS, canSubmitForApproval, POUR_STATUS } from "@/lib/ops/pourRules";
+import { POUR_TYPE_OPTIONS, canSubmitForApproval, isAdminRole, POUR_STATUS } from "@/lib/ops/pourRules";
+
+/** How the save action should be interpreted by the caller. */
+export type PourSaveAction = "draft" | "submit" | "preserve";
 
 interface Props {
   /** If provided, form is pre-filled for editing. */
   initialData?: PourEvent;
   onClose:      () => void;
-  onSubmit:     (input: CreatePourInput, asDraft: boolean) => void;
+  onSubmit:     (input: CreatePourInput, action: PourSaveAction) => void;
   role:         UserRole;
   userId:       string;
 }
@@ -58,16 +61,34 @@ function toFormState(pour?: PourEvent): FormState {
 }
 
 export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }: Props) {
-  const isEdit = !!initialData;
+  const isEdit         = !!initialData;
+  const currentStatus  = initialData?.status;
+  const isAdmin        = isAdminRole(role);
   const [form, setForm] = useState<FormState>(() => toFormState(initialData));
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
-  // For edits, whether the user can submit for approval via this modal
-  const showSubmitOption = !isEdit || canSubmitForApproval(
-    role,
-    { status: initialData!.status, createdBy: initialData!.createdBy },
-    userId,
-  );
+  // ── Button visibility rules ──────────────────────────────────────────────
+  //
+  // Non-admin editing their own Approved pour → editing triggers re-approval.
+  // The only option is "Save & Resubmit for Approval".
+  const nonAdminEditingApproved =
+    isEdit && !isAdmin && currentStatus === POUR_STATUS.APPROVED;
+
+  // Admin editing a non-Draft, non-Rejected pour → "Save Changes" (keeps status).
+  const adminEditingStable =
+    isEdit &&
+    isAdmin &&
+    currentStatus !== POUR_STATUS.DRAFT &&
+    currentStatus !== POUR_STATUS.REJECTED;
+
+  // Show "Submit for Approval" when creating or editing a Draft/Rejected pour.
+  const showSubmitForApproval =
+    !nonAdminEditingApproved &&
+    !adminEditingStable &&
+    (!isEdit || canSubmitForApproval(role, { status: currentStatus!, createdBy: initialData!.createdBy }, userId));
+
+  // Show "Save as Draft" for create and edit-of-Draft/Rejected (not for non-admin Approved).
+  const showSaveDraft = !nonAdminEditingApproved && !adminEditingStable;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -118,12 +139,17 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
 
   function handleSaveDraft() {
     if (!validate()) return;
-    onSubmit(buildInput(), true);
+    onSubmit(buildInput(), "draft");
   }
 
   function handleSubmitForApproval() {
     if (!validate()) return;
-    onSubmit(buildInput(), false);
+    onSubmit(buildInput(), "submit");
+  }
+
+  function handlePreserve() {
+    if (!validate()) return;
+    onSubmit(buildInput(), "preserve");
   }
 
   return (
@@ -152,6 +178,17 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
             <X size={16} />
           </button>
         </div>
+
+        {/* Re-approval notice for non-admin editing an Approved pour */}
+        {nonAdminEditingApproved && (
+          <div className="mx-6 mt-4 flex items-start gap-2 rounded-lg border border-status-warning/30 bg-status-warning/10 px-3 py-2.5">
+            <AlertTriangle size={14} className="text-status-warning mt-0.5 shrink-0" />
+            <p className="text-xs text-status-warning leading-snug">
+              This pour is <strong>Approved</strong>. Saving changes will move it back to{" "}
+              <strong>Pending Approval</strong> so it can be re-reviewed.
+            </p>
+          </div>
+        )}
 
         {/* Form */}
         <div className="px-6 py-5 space-y-5">
@@ -306,22 +343,47 @@ export function CreatePourModal({ initialData, onClose, onSubmit, role, userId }
             Cancel
           </button>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleSaveDraft}
-              className="text-sm font-semibold px-4 py-2 rounded-lg border border-surface-border text-content-secondary hover:border-gold/30 hover:text-gold transition-colors"
-            >
-              Save as Draft
-            </button>
-            {showSubmitOption && (
+
+            {/* Save as Draft — create mode and editing Draft/Rejected */}
+            {showSaveDraft && (
+              <button
+                onClick={handleSaveDraft}
+                className="text-sm font-semibold px-4 py-2 rounded-lg border border-surface-border text-content-secondary hover:border-gold/30 hover:text-gold transition-colors"
+              >
+                Save as Draft
+              </button>
+            )}
+
+            {/* Submit for Approval — create mode and editing Draft/Rejected */}
+            {showSubmitForApproval && (
               <button
                 onClick={handleSubmitForApproval}
                 className="text-sm font-semibold px-4 py-2 rounded-lg bg-gold hover:bg-gold-hover text-content-inverse transition-colors"
               >
-                {isEdit && initialData?.status === POUR_STATUS.DRAFT
-                  ? "Save & Submit for Approval"
-                  : "Submit for Approval"}
+                {isEdit ? "Save & Submit for Approval" : "Submit for Approval"}
               </button>
             )}
+
+            {/* Save & Resubmit — non-admin editing their own Approved pour */}
+            {nonAdminEditingApproved && (
+              <button
+                onClick={handleSubmitForApproval}
+                className="text-sm font-semibold px-4 py-2 rounded-lg bg-status-warning hover:bg-status-warning/90 text-white transition-colors"
+              >
+                Save & Resubmit for Approval
+              </button>
+            )}
+
+            {/* Save Changes — admin editing a stable (non-Draft/Rejected) pour */}
+            {adminEditingStable && (
+              <button
+                onClick={handlePreserve}
+                className="text-sm font-semibold px-4 py-2 rounded-lg bg-gold hover:bg-gold-hover text-content-inverse transition-colors"
+              >
+                Save Changes
+              </button>
+            )}
+
           </div>
         </div>
       </div>

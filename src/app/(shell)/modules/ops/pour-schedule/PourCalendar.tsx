@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
-import type { PourEvent } from "@/lib/ops/types";
+import { ChevronLeft, ChevronRight, Clock, Truck, Users } from "lucide-react";
+import type { PourEvent, Request as OpsRequest } from "@/lib/ops/types";
 import { POUR_STATUS } from "@/lib/ops/pourRules";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -22,12 +22,14 @@ const MAX_VISIBLE = 3;
 interface PourCalendarProps {
   /** Full pours list — component filters to Approved only internally. */
   pours:       PourEvent[];
+  /** All dispatch requests — used to show assigned personnel on event chips. */
+  requests:    OpsRequest[];
   onPourClick: (pour: PourEvent) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function PourCalendar({ pours, onPourClick }: PourCalendarProps) {
+export function PourCalendar({ pours, requests, onPourClick }: PourCalendarProps) {
   const now = new Date();
 
   const [year,  setYear]  = React.useState(now.getFullYear());
@@ -38,6 +40,18 @@ export function PourCalendar({ pours, onPourClick }: PourCalendarProps) {
     () => pours.filter((p) => p.status === POUR_STATUS.APPROVED),
     [pours],
   );
+
+  // ── Build pourId → { pump, mason } assignment index ──────────────────────
+  const assignmentByPour = useMemo<Record<string, { pump?: OpsRequest; mason?: OpsRequest }>>(() => {
+    const map: Record<string, { pump?: OpsRequest; mason?: OpsRequest }> = {};
+    for (const req of requests) {
+      if (!req.sourcePourId) continue;
+      if (!map[req.sourcePourId]) map[req.sourcePourId] = {};
+      if (req.type === "pump_truck") map[req.sourcePourId].pump  = req;
+      if (req.type === "mason")      map[req.sourcePourId].mason = req;
+    }
+    return map;
+  }, [requests]);
 
   // ── Build date → pour[] index ─────────────────────────────────────────────
   const poursByDate = useMemo<Record<string, PourEvent[]>>(() => {
@@ -180,21 +194,44 @@ export function PourCalendar({ pours, onPourClick }: PourCalendarProps) {
               </div>
 
               {/* Event chips */}
-              {visible.map((pour) => (
-                <button
-                  key={pour.id}
-                  onClick={() => onPourClick(pour)}
-                  className="w-full text-left rounded px-1.5 py-0.5 bg-gold/10 border border-gold/20 hover:bg-gold/20 hover:border-gold/40 transition-colors"
-                  title={`${pour.time} · ${pour.location} · ${pour.pourType}`}
-                >
-                  <div className="flex items-center gap-1 min-w-0">
-                    <Clock size={9} className="shrink-0 text-gold" />
-                    <span className="text-[10px] font-semibold text-gold truncate">{pour.time}</span>
-                  </div>
-                  <p className="text-[10px] text-content-secondary truncate leading-tight">{pour.location}</p>
-                  <p className="text-[9px] text-content-muted truncate leading-tight">{pour.pourType}</p>
-                </button>
-              ))}
+              {visible.map((pour) => {
+                const assignment = assignmentByPour[pour.id] ?? {};
+                const pumpLabel  = assignment.pump?.status  === "assigned" ? assignment.pump.assignedToLabel  : null;
+                const masonLabel = assignment.mason?.status === "assigned" ? assignment.mason.assignedToLabel : null;
+                const hasAssignment = pumpLabel || masonLabel;
+
+                return (
+                  <button
+                    key={pour.id}
+                    onClick={() => onPourClick(pour)}
+                    className="w-full text-left rounded px-1.5 py-0.5 bg-gold/10 border border-gold/20 hover:bg-gold/20 hover:border-gold/40 transition-colors"
+                    title={`${pour.time} · ${pour.location} · ${pour.pourType}`}
+                  >
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Clock size={9} className="shrink-0 text-gold" />
+                      <span className="text-[10px] font-semibold text-gold truncate">{pour.time}</span>
+                    </div>
+                    <p className="text-[10px] text-content-secondary truncate leading-tight">{pour.location}</p>
+                    <p className="text-[9px] text-content-muted truncate leading-tight">{pour.pourType}</p>
+                    {hasAssignment && (
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {pumpLabel && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-status-success truncate max-w-full">
+                            <Truck size={8} className="shrink-0" />
+                            <span className="truncate">{pumpLabel}</span>
+                          </span>
+                        )}
+                        {masonLabel && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-status-success truncate max-w-full">
+                            <Users size={8} className="shrink-0" />
+                            <span className="truncate">{masonLabel}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
 
               {/* Overflow count */}
               {overflow > 0 && (

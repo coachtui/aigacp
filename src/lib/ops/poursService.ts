@@ -17,6 +17,7 @@ import type { UserRole } from "@/types/org";
 import {
   POUR_STATUS,
   isValidTransition,
+  isAdminRole,
   canApprovePour,
   canCancelPour,
   canSubmitForApproval,
@@ -175,7 +176,15 @@ export function createPour(input: CreatePourInput, asDraft: boolean): PourEvent 
 }
 
 /**
- * Update core fields of a pour (admin) or own Draft/Rejected pour (creator).
+ * Update core fields of a pour.
+ *
+ * Behavior rules:
+ *  - preserveStatus: true  — admin keeps the pour at its current status (no re-approval needed).
+ *  - submitForApproval: true — saves the edits and also transitions to Pending Approval
+ *                             (used when admin or creator clicks "Save & Submit" in edit mode).
+ *  - default (no options) — if a non-admin is editing their own Approved pour the status
+ *                           automatically resets to Pending Approval so it gets re-reviewed.
+ *
  * Returns null if permissions or state prevent the edit.
  */
 export function editPour(
@@ -183,11 +192,34 @@ export function editPour(
   updates: Omit<CreatePourInput, "createdBy" | "createdByName">,
   actorRole: UserRole,
   actorId: string,
+  options?: { preserveStatus?: boolean; submitForApproval?: boolean },
 ): PourEvent | null {
   const pour = getPourById(id);
   if (!pour) return null;
   if (!canEditPour(actorRole, pour, actorId)) return null;
-  const updated: PourEvent = { ...pour, ...updates };
+
+  // Determine the resulting status.
+  let newStatus = pour.status;
+
+  if (options?.submitForApproval && canSubmitForApproval(actorRole, pour, actorId)) {
+    newStatus = POUR_STATUS.PENDING_APPROVAL;
+  } else if (!options?.preserveStatus && !isAdminRole(actorRole) && pour.status === POUR_STATUS.APPROVED) {
+    // Non-admin editing an Approved pour → requires fresh approval.
+    newStatus = POUR_STATUS.PENDING_APPROVAL;
+  }
+
+  const clearApproval = newStatus === POUR_STATUS.PENDING_APPROVAL && pour.status === POUR_STATUS.APPROVED;
+
+  const updated: PourEvent = {
+    ...pour,
+    ...updates,
+    status: newStatus,
+    ...(clearApproval ? {
+      approvedBy:      undefined,
+      approvedByName:  undefined,
+      approvedAt:      undefined,
+    } : {}),
+  };
   replace(updated);
   return updated;
 }

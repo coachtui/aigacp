@@ -181,7 +181,7 @@ interface OpsContextValue {
   // Pours
   pours:                 PourEvent[];
   createPour:            (input: CreatePourInput, asDraft: boolean) => void;
-  editPour:              (id: string, updates: Omit<CreatePourInput, "createdBy" | "createdByName">, actorRole: UserRole, actorId: string) => void;
+  editPour:              (id: string, updates: Omit<CreatePourInput, "createdBy" | "createdByName">, actorRole: UserRole, actorId: string, options?: { preserveStatus?: boolean; submitForApproval?: boolean }) => void;
   submitPourForApproval: (id: string, actorRole: UserRole, actorId: string) => void;
   approvePour:           (id: string, actorRole: UserRole, actorId: string, actorName: string) => void;
   rejectPour:            (id: string, reason: string, actorRole: UserRole, actorId: string, actorName: string) => void;
@@ -246,8 +246,9 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
     updates: Omit<CreatePourInput, "createdBy" | "createdByName">,
     actorRole: UserRole,
     actorId: string,
+    options?: { preserveStatus?: boolean; submitForApproval?: boolean },
   ): void {
-    const pour = poursService.editPour(id, updates, actorRole, actorId);
+    const pour = poursService.editPour(id, updates, actorRole, actorId, options);
     if (pour) dispatch({ type: "UPSERT_POUR", pour });
   }
 
