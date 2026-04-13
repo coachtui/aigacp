@@ -32,7 +32,7 @@ export const MOCK_ORG_CONFIG: OrgConfig = {
     role:   "owner",
     avatar: null,
   },
-  enabledModules: ["cru", "fix", "inspect", "datum", "ops"],
+  enabledModules: ["cru", "fix", "inspect", "datum", "ops", "mx"],
   features: {
     cru: {
       scheduling:      true,

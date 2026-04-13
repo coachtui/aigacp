@@ -3,6 +3,7 @@
 import { OrgProvider } from "@/providers/OrgProvider";
 import { UIProvider } from "@/providers/UIProvider";
 import { OpsProvider } from "@/providers/OpsProvider";
+import { MxProvider } from "@/providers/MxProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -40,7 +41,9 @@ export default function ShellRootLayout({ children }: { children: React.ReactNod
     <OrgProvider>
       <UIProvider>
         <OpsProvider>
-          <ShellLayout>{children}</ShellLayout>
+          <MxProvider>
+            <ShellLayout>{children}</ShellLayout>
+          </MxProvider>
         </OpsProvider>
       </UIProvider>
     </OrgProvider>

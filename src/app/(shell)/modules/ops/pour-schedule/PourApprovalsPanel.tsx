@@ -13,6 +13,7 @@
  */
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   getCruAvailableWorkersByRole,
   OPS_REQUEST_TO_CRU_ROLE,
@@ -20,10 +21,12 @@ import {
 import type { CruWorker } from "@/lib/integrations/cru";
 import type { PourEvent, Request as OpsRequest } from "@/lib/ops/types";
 import type { UserRole } from "@/types/org";
+import type { MxWorkOrder } from "@/lib/mx/types";
 import { POUR_STATUS_BADGE } from "@/lib/ops/pourRules";
+import { deriveProjectReadiness } from "@/lib/mx/readiness";
 import {
   CheckCircle, X, Clock, Droplets, Users, Truck,
-  UserCheck, Loader, AlertTriangle,
+  UserCheck, Loader, AlertTriangle, Wrench,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,6 +48,8 @@ interface PourApprovalsPanelProps {
   onRejectPour:     (id: string, reason: string) => void;
   onApproveRequest: (id: string) => void;
   onAssignRequest:  (id: string, worker?: WorkerInput) => void;
+  /** MX work orders — when provided, surfaces equipment readiness risk on pending pour cards. */
+  mxWorkOrders?:    MxWorkOrder[];
 }
 
 // ── Request display constants ─────────────────────────────────────────────────
@@ -74,6 +79,7 @@ export function PourApprovalsPanel({
   onRejectPour,
   onApproveRequest,
   onAssignRequest,
+  mxWorkOrders,
 }: PourApprovalsPanelProps) {
 
   // ── Pour reject inline state ──────────────────────────────────────────────
@@ -190,6 +196,21 @@ export function PourApprovalsPanel({
                             <AlertTriangle size={9} /> Conflict
                           </span>
                         )}
+                        {/* MX site readiness — only shown when OPS-blocking WOs exist */}
+                        {mxWorkOrders && pour.jobsiteId && (() => {
+                          const pr = deriveProjectReadiness(pour.jobsiteId, mxWorkOrders);
+                          if (pr.opsBlockingCount === 0) return null;
+                          return (
+                            <Link
+                              href="/modules/mx/readiness"
+                              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest border border-status-critical/30 bg-status-critical/10 text-status-critical rounded-[var(--radius-badge)] px-1.5 py-0.5 shrink-0 hover:bg-status-critical/15 transition-colors"
+                              title="Active OPS-blocking MX work orders at this site"
+                            >
+                              <Wrench size={9} />
+                              Blocking MX Issues · {pr.opsBlockingCount} WO{pr.opsBlockingCount !== 1 ? "s" : ""}
+                            </Link>
+                          );
+                        })()}
                       </div>
 
                       <div className="flex items-center gap-3 flex-wrap text-xs text-content-secondary mt-1">

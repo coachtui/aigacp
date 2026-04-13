@@ -16,6 +16,7 @@ const MODULE_LABEL: Record<ModuleId, string> = {
   inspect: "Inspect",
   datum:   "Datum",
   ops:     "OPS",
+  mx:      "MX",
 };
 
 const MODULE_COLOR: Record<ModuleId, string> = {
@@ -24,6 +25,7 @@ const MODULE_COLOR: Record<ModuleId, string> = {
   inspect: "text-blue-brand border-blue-brand/30 bg-blue-brand/10",
   datum:   "text-teal       border-teal/30       bg-teal/10",
   ops:     "text-gold       border-gold/30       bg-gold/10",
+  mx:      "text-teal       border-teal/30       bg-teal/10",
 };
 
 const SEVERITY_BAR: Record<IssueSeverity, string> = {

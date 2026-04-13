@@ -1,4 +1,4 @@
-export type ModuleId = "cru" | "fix" | "inspect" | "datum" | "ops";
+export type ModuleId = "cru" | "fix" | "inspect" | "datum" | "ops" | "mx";
 
 export type UserRole =
   | "owner"

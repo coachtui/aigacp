@@ -56,6 +56,15 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category:    "operations",
     accentColor: "gold",
   },
+  {
+    id:          "mx",
+    label:       "MX",
+    description: "Maintenance execution — work orders, mechanic scheduling, equipment readiness",
+    tagline:     "Create work orders, schedule mechanics, and track equipment readiness.",
+    route:       "/modules/mx",
+    category:    "equipment",
+    accentColor: "teal",
+  },
 ];
 
 export function getModuleById(id: ModuleId): ModuleDefinition | undefined {

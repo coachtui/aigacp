@@ -21,10 +21,14 @@ import type { PourSaveAction } from "./CreatePourModal";
 import { PourCalendar } from "./PourCalendar";
 import { PourApprovalsPanel } from "./PourApprovalsPanel";
 import { getJobsitesForUser } from "@/lib/ops/jobsites";
+import { useMx } from "@/providers/MxProvider";
+import { deriveProjectReadiness } from "@/lib/mx/readiness";
+import type { ProjectReadiness } from "@/lib/mx/readiness";
+import { ACTIVE_STATUSES } from "@/lib/mx/rules";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
   Loader, Truck, Users, Plus, Clock, X, ChevronDown,
-  List, Calendar, ClipboardCheck,
+  List, Calendar, ClipboardCheck, Wrench,
 } from "lucide-react";
 
 // ── CRU status display (legacy — CRU has its own simpler status model) ────────
@@ -80,6 +84,26 @@ export default function PourSchedulePage() {
   } = useOps();
 
   const cruOrgId = currentOrganization.cruOrgId ?? currentOrganization.id;
+
+  // ── MX readiness signals ──────────────────────────────────────────────────
+  const { workOrders: mxWorkOrders } = useMx();
+
+  // Per-pour readiness: maps pour.id → project-level blocking summary
+  const pourReadiness = useMemo(() => {
+    const map = new Map<string, ProjectReadiness>();
+    for (const pour of pours) {
+      if (pour.jobsiteId) {
+        map.set(pour.id, deriveProjectReadiness(pour.jobsiteId, mxWorkOrders));
+      }
+    }
+    return map;
+  }, [pours, mxWorkOrders]);
+
+  // Count of active OPS-blocking MX WOs across the whole org (summary bar)
+  const opsBlockingMxCount = useMemo(
+    () => mxWorkOrders.filter((wo) => wo.opsBlocking && ACTIVE_STATUSES.includes(wo.status)).length,
+    [mxWorkOrders],
+  );
 
   // ── CRU events (preserved existing behavior) ───────────────────────────────
   const [cruEvents,   setCruEvents]   = useState<CruSiteEvent[]>([]);
@@ -359,6 +383,18 @@ export default function PourSchedulePage() {
             <p className="text-xl font-bold text-status-warning">{conflictCount}</p>
           </div>
         )}
+        {opsBlockingMxCount > 0 && (
+          <Link
+            href="/modules/mx/readiness"
+            className="bg-surface-raised border border-status-critical/25 rounded-[var(--radius-card)] px-4 py-3 hover:border-status-critical/50 transition-colors block"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-widest text-status-critical mb-1">Project Equipment Risk</p>
+            <p className="text-xl font-bold text-status-critical">{opsBlockingMxCount}</p>
+            <p className="text-xs text-content-muted mt-0.5">
+              blocking MX WO{opsBlockingMxCount !== 1 ? "s" : ""}
+            </p>
+          </Link>
+        )}
       </div>
 
       {/* ── Approvals View ─────────────────────────────────────────────────── */}
@@ -375,6 +411,7 @@ export default function PourSchedulePage() {
           onRejectPour={(id, reason) => rejectPour(id, reason, role, currentUser.id, currentUser.name)}
           onApproveRequest={approveRequest}
           onAssignRequest={assignRequest}
+          mxWorkOrders={mxWorkOrders}
         />
       )}
 
@@ -430,6 +467,8 @@ export default function PourSchedulePage() {
             {sortedPours.map((pour) => {
               const isInlineOpen = inlineAction?.pourId === pour.id;
               const pourRequests = requests.filter((r) => r.sourcePourId === pour.id);
+              const mxReadiness  = pourReadiness.get(pour.id);
+              const hasMxRisk    = (mxReadiness?.opsBlockingCount ?? 0) > 0;
 
               return (
                 <React.Fragment key={pour.id}>
@@ -451,6 +490,19 @@ export default function PourSchedulePage() {
                         <p className="text-[10px] text-status-error mt-0.5 max-w-[180px] truncate" title={pour.rejectionReason}>
                           Rejected: {pour.rejectionReason}
                         </p>
+                      )}
+                      {/* MX equipment risk signal */}
+                      {hasMxRisk && (
+                        <Link
+                          href="/modules/mx/readiness"
+                          className="inline-flex items-center gap-1 mt-1 group"
+                          title="Active OPS-blocking MX work orders at this site"
+                        >
+                          <Wrench size={10} className="text-status-critical shrink-0" />
+                          <span className="text-[10px] font-semibold text-status-critical group-hover:underline">
+                            {mxReadiness!.opsBlockingCount} blocking MX WO{mxReadiness!.opsBlockingCount !== 1 ? "s" : ""}
+                          </span>
+                        </Link>
                       )}
                     </td>
 
@@ -664,6 +716,7 @@ export default function PourSchedulePage() {
               ? () => setModal({ mode: "edit", pour: modal.pour })
               : undefined
           }
+          projectReadiness={pourReadiness.get(modal.pour.id)}
         />
       )}
     </PageContainer>
@@ -944,14 +997,16 @@ function InlineActionForm({ action, onReasonChange, onConfirm, onCancel }: Inlin
 // ── Pour detail modal (calendar click-through) ────────────────────────────────
 
 interface PourDetailModalProps {
-  pour:     PourEvent;
+  pour:               PourEvent;
   /** Dispatch requests linked to this pour (already filtered to sourcePourId). */
-  requests: OpsRequest[];
-  onClose:  () => void;
-  onEdit?:  () => void;
+  requests:           OpsRequest[];
+  onClose:            () => void;
+  onEdit?:            () => void;
+  /** MX project-level readiness — present when the pour has a jobsiteId. */
+  projectReadiness?:  ProjectReadiness;
 }
 
-function PourDetailModal({ pour, requests, onClose, onEdit }: PourDetailModalProps) {
+function PourDetailModal({ pour, requests, onClose, onEdit, projectReadiness }: PourDetailModalProps) {
   const pumpReq  = requests.find((r) => r.type === "pump_truck");
   const masonReq = requests.find((r) => r.type === "mason");
   return (
@@ -1078,6 +1133,32 @@ function PourDetailModal({ pour, requests, onClose, onEdit }: PourDetailModalPro
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Site Readiness — project-level MX signals only (no specific asset link exists yet) */}
+          {projectReadiness && projectReadiness.opsBlockingCount > 0 && (
+            <div className="border-t border-surface-border pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted mb-2">
+                Site Readiness
+              </p>
+              <div className="flex items-start gap-2">
+                <Wrench size={13} className="text-status-critical shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-status-critical">
+                    {projectReadiness.opsBlockingCount} blocking MX WO{projectReadiness.opsBlockingCount !== 1 ? "s" : ""} at this site
+                  </p>
+                  <p className="text-[10px] text-content-muted mt-0.5 leading-relaxed">
+                    Project equipment risk — not linked to a specific assigned asset.
+                  </p>
+                  <Link
+                    href="/modules/mx/readiness"
+                    className="block text-[10px] text-teal hover:underline mt-2"
+                  >
+                    View Blocking Issues in MX →
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
 

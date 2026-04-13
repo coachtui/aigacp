@@ -28,6 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Inspect", href: "/modules/inspect", icon: "ClipboardCheck" },
       { label: "Fix",     href: "/modules/fix",     icon: "Wrench" },
       { label: "OPS",     href: "/modules/ops",     icon: "ClipboardList" },
+      { label: "MX",      href: "/modules/mx",      icon: "Wrench" },
     ],
   },
   {

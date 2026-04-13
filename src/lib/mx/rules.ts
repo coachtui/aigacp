@@ -1,0 +1,131 @@
+/**
+ * MX Business Rules
+ *
+ * Status transitions, permission helpers, and badge/label styling.
+ * Follows the pourRules.ts pattern — pure functions, no side effects.
+ */
+
+import type { MxWorkOrderStatus, MxWorkOrderPriority, MxWorkOrderCategory, ReadinessStatus } from "./types";
+import type { UserRole } from "@/types/org";
+
+// ── Status transitions ────────────────────────────────────────────────────────
+
+/** Valid forward/back transitions for each status.
+ *  UI should only offer these transitions to the user. */
+export const WO_TRANSITIONS: Record<MxWorkOrderStatus, MxWorkOrderStatus[]> = {
+  draft:         ["open", "canceled"],
+  open:          ["triage", "in_progress", "canceled"],
+  triage:        ["approved", "canceled"],
+  approved:      ["scheduled", "in_progress", "canceled"],
+  scheduled:     ["in_progress", "canceled"],
+  in_progress:   ["waiting_parts", "blocked", "completed"],
+  waiting_parts: ["in_progress", "blocked", "canceled"],
+  blocked:       ["in_progress", "canceled"],
+  completed:     [],
+  canceled:      [],
+};
+
+/** Statuses that count as "active" — block equipment and affect readiness */
+export const ACTIVE_STATUSES: MxWorkOrderStatus[] = [
+  "open", "triage", "approved", "scheduled", "in_progress", "waiting_parts", "blocked",
+];
+
+/** Statuses that are terminal — no further transitions */
+export const TERMINAL_STATUSES: MxWorkOrderStatus[] = ["completed", "canceled"];
+
+// ── Permission helpers ────────────────────────────────────────────────────────
+
+/** Roles that can create a new work order */
+export function canCreateWorkOrder(role: UserRole): boolean {
+  return ["owner", "admin", "pm", "project_engineer", "superintendent", "foreman", "mechanic"].includes(role);
+}
+
+/** Roles that can approve a work order (move from triage → approved) */
+export function canApproveWorkOrder(role: UserRole): boolean {
+  return ["owner", "admin", "pm", "superintendent"].includes(role);
+}
+
+/** Roles that can assign mechanics to a work order */
+export function canAssignMechanic(role: UserRole): boolean {
+  return ["owner", "admin", "pm", "superintendent", "foreman"].includes(role);
+}
+
+/** Can this actor cancel or update status on this work order? */
+export function canUpdateWorkOrderStatus(role: UserRole): boolean {
+  return ["owner", "admin", "pm", "superintendent", "foreman", "mechanic"].includes(role);
+}
+
+// ── Label maps ────────────────────────────────────────────────────────────────
+
+export const STATUS_LABELS: Record<MxWorkOrderStatus, string> = {
+  draft:         "Draft",
+  open:          "Open",
+  triage:        "Triage",
+  approved:      "Approved",
+  scheduled:     "Scheduled",
+  in_progress:   "In Progress",
+  waiting_parts: "Waiting Parts",
+  blocked:       "Blocked",
+  completed:     "Completed",
+  canceled:      "Canceled",
+};
+
+export const PRIORITY_LABELS: Record<MxWorkOrderPriority, string> = {
+  critical: "Critical",
+  high:     "High",
+  medium:   "Medium",
+  low:      "Low",
+};
+
+export const CATEGORY_LABELS: Record<MxWorkOrderCategory, string> = {
+  preventive:   "Preventive",
+  corrective:   "Corrective",
+  emergency:    "Emergency",
+  inspection:   "Inspection",
+  modification: "Modification",
+};
+
+export const READINESS_LABELS: Record<ReadinessStatus, string> = {
+  ready:             "Ready",
+  limited:           "Limited",
+  at_risk:           "At Risk",
+  scheduled_service: "Scheduled Service",
+  in_shop:           "In Shop",
+  awaiting_parts:    "Awaiting Parts",
+  down:              "Down",
+};
+
+// ── Badge styles ──────────────────────────────────────────────────────────────
+
+/** Tailwind classes for status badges */
+export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
+  draft:         "text-content-muted border-surface-border bg-surface-overlay",
+  open:          "text-blue-brand border-blue-brand/30 bg-blue-brand/10",
+  triage:        "text-gold border-gold/30 bg-gold/10",
+  approved:      "text-teal border-teal/30 bg-teal/10",
+  scheduled:     "text-teal border-teal/40 bg-teal/15",
+  in_progress:   "text-status-info border-status-info/30 bg-status-info/10",
+  waiting_parts: "text-gold border-gold/40 bg-gold/15",
+  blocked:       "text-status-critical border-status-critical/30 bg-status-critical/10",
+  completed:     "text-status-ok border-status-ok/30 bg-status-ok/10",
+  canceled:      "text-content-muted border-surface-border bg-surface-overlay line-through",
+};
+
+/** Tailwind classes for priority badges */
+export const PRIORITY_BADGE: Record<MxWorkOrderPriority, string> = {
+  critical: "text-status-critical border-status-critical/40 bg-status-critical/15 font-bold",
+  high:     "text-status-critical border-status-critical/30 bg-status-critical/10",
+  medium:   "text-gold border-gold/30 bg-gold/10",
+  low:      "text-content-muted border-surface-border bg-surface-overlay",
+};
+
+/** Tailwind classes for readiness badges */
+export const READINESS_BADGE: Record<ReadinessStatus, string> = {
+  ready:             "text-status-ok border-status-ok/30 bg-status-ok/10",
+  limited:           "text-gold border-gold/30 bg-gold/10",
+  at_risk:           "text-gold border-gold/40 bg-gold/15 font-semibold",
+  scheduled_service: "text-teal border-teal/30 bg-teal/10",
+  in_shop:           "text-status-info border-status-info/30 bg-status-info/10",
+  awaiting_parts:    "text-gold border-gold/40 bg-gold/15",
+  down:              "text-status-critical border-status-critical/30 bg-status-critical/10 font-bold",
+};
