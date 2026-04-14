@@ -33,7 +33,7 @@ import {
 // ── CRU status display ────────────────────────────────────────────────────────
 
 const CRU_STATUS_BADGE: Record<string, string> = {
-  planned:   "text-content-secondary border-content-muted/30 bg-content-muted/15",
+  planned:   "text-content-secondary border-surface-border-hover bg-surface-border",
   confirmed: "text-gold            border-gold/30           bg-gold/10",
   completed: "text-status-success  border-status-success/30 bg-status-success/10",
 };

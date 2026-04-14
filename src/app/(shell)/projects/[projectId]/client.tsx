@@ -60,7 +60,7 @@ const SEVERITY_PILL: Record<string, string> = {
   critical: "text-status-critical bg-status-critical/10 border-status-critical/20",
   high:     "text-status-warning  bg-status-warning/10  border-status-warning/20",
   medium:   "text-blue-brand      bg-blue-brand/10       border-blue-brand/20",
-  low:      "text-content-secondary bg-content-muted/15 border-content-muted/30",
+  low:      "text-content-secondary bg-surface-border border-surface-border-hover",
 };
 
 const ALERT_SEVERITY_DOT: Record<string, string> = {

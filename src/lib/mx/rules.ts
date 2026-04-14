@@ -99,7 +99,7 @@ export const READINESS_LABELS: Record<ReadinessStatus, string> = {
 
 /** Tailwind classes for status badges */
 export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
-  draft:         "text-content-secondary border-content-muted/30 bg-content-muted/15",
+  draft:         "text-content-secondary border-surface-border-hover bg-surface-border",
   open:          "text-blue-brand border-blue-brand/30 bg-blue-brand/10",
   triage:        "text-gold border-gold/30 bg-gold/10",
   approved:      "text-teal border-teal/30 bg-teal/10",
@@ -108,7 +108,7 @@ export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
   waiting_parts: "text-gold border-gold/40 bg-gold/15",
   blocked:       "text-status-critical border-status-critical/30 bg-status-critical/10",
   completed:     "text-status-success border-status-success/30 bg-status-success/15",
-  canceled:      "text-content-muted border-content-muted/25 bg-content-muted/10 line-through",
+  canceled:      "text-content-muted border-surface-border-hover bg-surface-border line-through",
 };
 
 /** Tailwind classes for priority badges */
@@ -116,7 +116,7 @@ export const PRIORITY_BADGE: Record<MxWorkOrderPriority, string> = {
   critical: "text-status-critical border-status-critical/40 bg-status-critical/15 font-bold",
   high:     "text-status-critical border-status-critical/30 bg-status-critical/10",
   medium:   "text-gold border-gold/30 bg-gold/10",
-  low:      "text-content-secondary border-content-muted/30 bg-content-muted/15",
+  low:      "text-content-secondary border-surface-border-hover bg-surface-border",
 };
 
 /** Tailwind classes for readiness badges */

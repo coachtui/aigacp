@@ -44,7 +44,7 @@ const URGENCY_LABEL: Record<Urgency, string> = {
 const URGENCY_CHIP: Record<Urgency, string> = {
   overdue:  "text-status-critical bg-status-critical/10 border-status-critical/30 font-bold",
   today:    "text-gold bg-gold/10 border-gold/30 font-semibold",
-  tomorrow: "text-content-secondary bg-content-muted/15 border-content-muted/30",
+  tomorrow: "text-content-secondary bg-surface-border border-surface-border-hover",
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ export default function WorkOrderDetailPage({
                           </p>
                         </div>
                         {!m.available && (
-                          <span className="ml-auto text-[10px] text-content-secondary border border-content-muted/30 bg-content-muted/15 rounded px-1.5 py-0.5">Busy</span>
+                          <span className="ml-auto text-[10px] text-content-secondary border border-surface-border-hover bg-surface-border rounded px-1.5 py-0.5">Busy</span>
                         )}
                       </button>
                     ))}

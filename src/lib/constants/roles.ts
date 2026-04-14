@@ -17,7 +17,7 @@ export const ROLE_BADGE_COLORS: Record<UserRole, string> = {
   pm:               "text-teal border-teal/30 bg-[var(--teal-subtle)]",
   project_engineer: "text-blue-brand border-blue-brand/30 bg-[var(--blue-brand-subtle)]",
   superintendent:   "text-gold border-gold/30 bg-[var(--gold-subtle)]",
-  foreman:          "text-content-secondary border-content-muted/30 bg-content-muted/15",
+  foreman:          "text-content-secondary border-surface-border-hover bg-surface-border",
   mechanic:         "text-teal border-teal/30 bg-[var(--teal-subtle)]",
-  viewer:           "text-content-secondary border-content-muted/30 bg-content-muted/15",
+  viewer:           "text-content-secondary border-surface-border-hover bg-surface-border",
 };
