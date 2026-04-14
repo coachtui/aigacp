@@ -78,7 +78,7 @@ function getLaneActions(status: MxWorkOrderStatus): ActionDef[] {
     { label: "Resume",   status: "in_progress",   style: "bg-teal text-white border-teal hover:opacity-90",                          icon: <RotateCcw size={9} /> },
     { label: "Parts",    status: "waiting_parts", style: "border-gold/40 text-gold hover:bg-gold/10",                               icon: <PackageX size={9} /> },
     { label: "Blocked",  status: "blocked",       style: "border-status-critical/30 text-status-critical hover:bg-status-critical/10", icon: <XCircle size={9} /> },
-    { label: "Complete", status: "completed",     style: "bg-status-success text-white border-status-success hover:opacity-90",               icon: <CheckCircle2 size={9} /> },
+    { label: "Complete", status: "completed",     style: "bg-teal text-white border-teal hover:opacity-90",               icon: <CheckCircle2 size={9} /> },
   ];
   return defs.filter((d) => allowed.includes(d.status));
 }

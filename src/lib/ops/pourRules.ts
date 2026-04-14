@@ -151,5 +151,5 @@ export const POUR_STATUS_BADGE: Record<PourStatus, string> = {
   "Rejected":         "text-status-error    border-status-error/30   bg-status-error/10",
   "Canceled":         "text-content-muted   border-surface-border-hover bg-surface-border",
   "In Progress":      "text-blue-brand      border-blue-brand/30     bg-blue-brand/10",
-  "Completed":        "text-status-success  border-status-success/30 bg-status-success/10",
+  "Completed":        "text-teal            border-teal/40          bg-teal/20",
 };

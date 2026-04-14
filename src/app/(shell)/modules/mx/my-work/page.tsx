@@ -86,7 +86,7 @@ function getActions(status: MxWorkOrderStatus): ActionDef[] {
     { label: "Waiting Parts",  status: "waiting_parts", style: "border-gold/40 text-gold hover:bg-gold/10",                                    icon: <PackageX size={10} /> },
     { label: "Mark Blocked",   status: "blocked",       style: "border-status-critical/30 text-status-critical hover:bg-status-critical/10",   icon: <XCircle size={10} /> },
     { label: "Resume",         status: "in_progress",   style: "bg-teal text-white hover:opacity-90 border-teal",                              icon: <RotateCcw size={10} /> },
-    { label: "Complete",       status: "completed",     style: "bg-status-success text-white hover:opacity-90 border-status-success",                    icon: <CheckCircle2 size={10} /> },
+    { label: "Complete",       status: "completed",     style: "bg-teal text-white hover:opacity-90 border-teal",                    icon: <CheckCircle2 size={10} /> },
   ];
   return defs.filter((d) => allowed.includes(d.status));
 }
@@ -426,7 +426,7 @@ export default function MyWorkPage() {
           {/* Completed */}
           {completed.length > 0 && (
             <Section
-              icon={<CheckCircle2 size={13} className="text-status-success" />}
+              icon={<CheckCircle2 size={13} className="text-teal" />}
               label="Completed"
               count={completed.length}
               emptyMessage=""

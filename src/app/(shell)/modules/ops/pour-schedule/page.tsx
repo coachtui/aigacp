@@ -35,7 +35,7 @@ import {
 const CRU_STATUS_BADGE: Record<string, string> = {
   planned:   "text-content-secondary border-surface-border-hover bg-surface-border",
   confirmed: "text-gold            border-gold/30           bg-gold/10",
-  completed: "text-status-success  border-status-success/30 bg-status-success/10",
+  completed: "text-teal            border-teal/40          bg-teal/20",
 };
 
 // Date range for CRU query

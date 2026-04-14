@@ -107,7 +107,7 @@ export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
   in_progress:   "text-status-info border-status-info/30 bg-status-info/10",
   waiting_parts: "text-gold border-gold/40 bg-gold/15",
   blocked:       "text-status-critical border-status-critical/30 bg-status-critical/10",
-  completed:     "text-status-success border-status-success/30 bg-status-success/15",
+  completed:     "text-teal border-teal/40 bg-teal/20",
   canceled:      "text-content-muted border-surface-border-hover bg-surface-border line-through",
 };
 
@@ -121,7 +121,7 @@ export const PRIORITY_BADGE: Record<MxWorkOrderPriority, string> = {
 
 /** Tailwind classes for readiness badges */
 export const READINESS_BADGE: Record<ReadinessStatus, string> = {
-  ready:             "text-status-success border-status-success/30 bg-status-success/15",
+  ready:             "text-teal border-teal/40 bg-teal/20",
   limited:           "text-gold border-gold/30 bg-gold/10",
   at_risk:           "text-gold border-gold/40 bg-gold/15 font-semibold",
   scheduled_service: "text-teal border-teal/30 bg-teal/10",
