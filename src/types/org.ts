@@ -44,9 +44,9 @@ export interface UserContext {
 export type ModuleFeatureMap = Record<string, boolean>;
 
 export interface OrgConfig {
-  org:            OrgContext;
-  currentProject: ProjectContext;
-  currentUser:    UserContext;
-  enabledModules: ModuleId[];
-  features:       Partial<Record<ModuleId, ModuleFeatureMap>>;
+  org:              OrgContext;
+  currentProject:   ProjectContext;
+  currentUser:      UserContext;
+  purchasedBundles: BundleId[];
+  features:         Partial<Record<ModuleId, ModuleFeatureMap>>;
 }

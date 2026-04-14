@@ -55,7 +55,7 @@ export const MOCK_ORG_CONFIG: OrgConfig = {
     role:   "owner",
     avatar: null,
   },
-  enabledModules: ["cru", "fix", "inspect", "datum", "ops", "mx"],
+  purchasedBundles: ["field_ops", "equipment", "operations"],
   features: {
     cru: {
       scheduling:      true,

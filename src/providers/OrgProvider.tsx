@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState } from "react";
 import type { OrgConfig, ProjectContext, ModuleId, UserRole } from "@/types/org";
 import type { ModuleFeatureMap } from "@/types/org";
 import { getOrgConfig, MOCK_PROJECTS, MOCK_USER_BY_ROLE, DEFAULT_USER } from "@/lib/config/org";
+import { getModulesForBundles } from "@/lib/modules/bundles";
 
 interface OrgContextValue {
   currentOrganization: OrgConfig["org"];
@@ -35,8 +36,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     }));
   }
 
+  const enabledModules = getModulesForBundles(config.purchasedBundles);
+
   function isModuleEnabled(id: ModuleId): boolean {
-    return config.enabledModules.includes(id);
+    return enabledModules.includes(id);
   }
 
   function getModuleFeatures(id: ModuleId): ModuleFeatureMap {
@@ -50,7 +53,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         currentProject:      config.currentProject,
         currentUser:         config.currentUser,
         role:                config.currentUser.role,
-        enabledModules:      config.enabledModules,
+        enabledModules:      enabledModules,
         features:            config.features,
         availableProjects:   MOCK_PROJECTS,
         setCurrentProject,
