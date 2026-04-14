@@ -58,6 +58,7 @@ function ReportIssueForm() {
         requestedBy:       currentUser.name,
         requestedByUserId: currentUser.id,
         requestedDate:     new Date().toISOString().slice(0, 10),
+        readinessImpact:   "at_risk",
         opsBlocking:       false,
       });
       setConfirmedId(wo.id);
