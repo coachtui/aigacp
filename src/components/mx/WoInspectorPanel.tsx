@@ -21,8 +21,8 @@ import { useState, useEffect } from "react";
 import { InspectorPanel } from "@/components/ui/InspectorPanel";
 import { useMx } from "@/providers/MxProvider";
 import { useOrg } from "@/providers/OrgProvider";
-import { getCruMechanicsAndDrivers } from "@/lib/integrations/cru";
-import type { CruWorker } from "@/lib/integrations/cru";
+import { getOrgMechanicsAndDrivers } from "@/lib/registry";
+import type { OrgWorker } from "@/lib/registry";
 import {
   STATUS_LABELS, STATUS_BADGE,
   PRIORITY_LABELS, PRIORITY_BADGE,
@@ -73,12 +73,12 @@ interface WoInspectorPanelProps {
 
 export function WoInspectorPanel({ woId, onClose }: WoInspectorPanelProps) {
   const { workOrders, updateWorkOrderStatus, updateWorkOrder, assignMechanic, unassignMechanic } = useMx();
-  const { currentUser, role } = useOrg();
+  const { currentUser, currentOrganization, role } = useOrg();
 
   const wo = woId ? workOrders.find((w) => w.id === woId) ?? null : null;
 
   // Mechanics list — load eagerly so names resolve immediately
-  const [mechanics,    setMechanics]    = useState<CruWorker[]>([]);
+  const [mechanics,    setMechanics]    = useState<OrgWorker[]>([]);
   const [loadingMechs, setLoadingMechs] = useState(false);
   const [showAssign,   setShowAssign]   = useState(false);
 
@@ -97,10 +97,10 @@ export function WoInspectorPanel({ woId, onClose }: WoInspectorPanelProps) {
   useEffect(() => {
     if (!woId) return;
     setLoadingMechs(true);
-    getCruMechanicsAndDrivers(currentUser.id)
+    getOrgMechanicsAndDrivers(currentOrganization.id)
       .then(setMechanics)
       .finally(() => setLoadingMechs(false));
-  }, [woId, currentUser.id]);
+  }, [woId, currentOrganization.id]);
 
   const open = !!wo;
 
@@ -131,7 +131,7 @@ export function WoInspectorPanel({ woId, onClose }: WoInspectorPanelProps) {
     if (wo) updateWorkOrder(wo.id, { priority });
   }
 
-  function handleAssign(mechanic: CruWorker) {
+  function handleAssign(mechanic: OrgWorker) {
     if (wo) { assignMechanic(wo.id, mechanic.id); setShowAssign(false); }
   }
 
