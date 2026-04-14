@@ -52,8 +52,8 @@
 
 /* Subtle overlay colors — used via CSS vars (not Tailwind tokens) */
 :root {
-  --gold-subtle:      rgba(234, 179, 8, 0.12);
-  --teal-subtle:      rgba(0, 207, 161, 0.12);
+  --gold-subtle:       rgba(234, 179, 8, 0.12);
+  --teal-subtle:       rgba(0, 207, 161, 0.12);
   --blue-brand-subtle: rgba(91, 130, 212, 0.12);
 
   /* Layout vars — readable by JS via getComputedStyle if needed */
@@ -61,6 +61,47 @@
   --sidebar-w-collapsed: 64px;
   --topbar-h:            56px;
   --assistant-w:         400px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Light Mode — applied via html.light class
+   All --color-* overrides cascade over :root (higher specificity).
+   Tailwind v4 utility classes reference these vars, so they
+   update automatically without any class-name changes in JSX.
+   ───────────────────────────────────────────────────────── */
+
+html.light {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-surface-base:         #EDEDF2;
+  --color-surface-raised:       #FFFFFF;
+  --color-surface-overlay:      #F4F4F9;
+  --color-surface-border:       #E0E0EA;
+  --color-surface-border-hover: #C4C4D4;
+
+  /* Content */
+  --color-content-primary:   #111118;
+  --color-content-secondary: #4A4A5C;
+  --color-content-muted:     #8080A0;
+  --color-content-inverse:   #FFFFFF;
+
+  /* Status — slightly adjusted for light-background legibility */
+  --color-status-critical: #DC2626;
+  --color-status-warning:  #D97706;
+  --color-status-success:  #16A34A;
+  --color-status-info:     #4B72C4;
+
+  /* Shadows — lighter for light mode */
+  --shadow-card:       0 1px 4px rgba(0,0,0,0.07), inset 0 0 0 1px #E0E0EA;
+  --shadow-card-gold:  0 0 0 1px #EAB308, 0 4px 16px rgba(234,179,8,0.12);
+  --shadow-panel:      -4px 0 24px rgba(0,0,0,0.10);
+  --shadow-dropdown:   0 8px 32px rgba(0,0,0,0.12), inset 0 0 0 1px #E0E0EA;
+
+  /* Subtle overlays */
+  --gold-subtle:       rgba(234, 179, 8, 0.14);
+  --teal-subtle:       rgba(0, 207, 161, 0.14);
+  --blue-brand-subtle: rgba(91, 130, 212, 0.14);
 }
 
 /* ─────────────────────────────────────────────────────────

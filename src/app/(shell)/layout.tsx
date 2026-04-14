@@ -4,6 +4,7 @@ import { OrgProvider } from "@/providers/OrgProvider";
 import { UIProvider } from "@/providers/UIProvider";
 import { OpsProvider } from "@/providers/OpsProvider";
 import { MxProvider } from "@/providers/MxProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -38,14 +39,16 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
 
 export default function ShellRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <OrgProvider>
-      <UIProvider>
-        <OpsProvider>
-          <MxProvider>
-            <ShellLayout>{children}</ShellLayout>
-          </MxProvider>
-        </OpsProvider>
-      </UIProvider>
-    </OrgProvider>
+    <ThemeProvider>
+      <OrgProvider>
+        <UIProvider>
+          <OpsProvider>
+            <MxProvider>
+              <ShellLayout>{children}</ShellLayout>
+            </MxProvider>
+          </OpsProvider>
+        </UIProvider>
+      </OrgProvider>
+    </ThemeProvider>
   );
 }

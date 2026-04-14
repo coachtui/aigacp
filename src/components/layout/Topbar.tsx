@@ -7,6 +7,7 @@ import { useUI } from "@/providers/UIProvider";
 import { useOrg } from "@/providers/OrgProvider";
 import { ProjectSelector } from "./ProjectSelector";
 import { DevRoleSwitcher } from "@/components/dev/DevRoleSwitcher";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ROLE_LABELS } from "@/lib/constants/roles";
 
 function getPageTitle(pathname: string): string {
@@ -58,6 +59,9 @@ export function Topbar() {
 
       {/* Right actions */}
       <div className="flex items-center gap-2">
+        {/* Theme toggle */}
+        <ThemeToggle />
+
         {/* Search */}
         <button
           onClick={openSearch}

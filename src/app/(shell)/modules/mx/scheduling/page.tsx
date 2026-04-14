@@ -15,6 +15,7 @@ import {
   ACTIVE_STATUSES,
 } from "@/lib/mx/rules";
 import type { MxWorkOrder, MxWorkOrderStatus } from "@/lib/mx/types";
+import { WoInspectorPanel } from "@/components/mx/WoInspectorPanel";
 import {
   ArrowLeft, User, CalendarDays, AlertTriangle,
   Inbox, Wrench, Clock, PackageX, Play, CheckCircle2,
@@ -90,12 +91,14 @@ function QueueCard({
   isDragging,
   onDragStart,
   onDragEnd,
+  onInspect,
 }: {
   wo:          MxWorkOrder;
   canAssign:   boolean;
   isDragging:  boolean;
   onDragStart: () => void;
   onDragEnd:   () => void;
+  onInspect:   (woId: string) => void;
 }) {
   const urgency = getUrgency(wo.neededByDate);
 
@@ -134,10 +137,13 @@ function QueueCard({
         </span>
       </div>
 
-      {/* Title */}
-      <Link href={`/modules/mx/work-orders/${wo.id}`} className="block hover:underline">
+      {/* Title — opens inspector instead of navigating */}
+      <button
+        onClick={() => onInspect(wo.id)}
+        className="block text-left hover:underline w-full"
+      >
         <p className="text-xs font-semibold text-content-primary leading-snug">{wo.title}</p>
-      </Link>
+      </button>
       {wo.description && (
         <p className="text-[10px] text-content-secondary mt-0.5 leading-snug line-clamp-1">{wo.description}</p>
       )}
@@ -176,6 +182,7 @@ function LaneItem({
   onUnassign,
   onAction,
   onNote,
+  onInspect,
 }: {
   wo:         MxWorkOrder;
   mechanicId: string;
@@ -184,6 +191,7 @@ function LaneItem({
   onUnassign: (woId: string, mechanicId: string) => void;
   onAction:   (woId: string, status: MxWorkOrderStatus) => void;
   onNote:     (woId: string, note: string) => void;
+  onInspect:  (woId: string) => void;
 }) {
   const urgency = getUrgency(wo.neededByDate);
   const actions = canAct ? getLaneActions(wo.status) : [];
@@ -223,9 +231,13 @@ function LaneItem({
           {STATUS_LABELS[wo.status]}
         </span>
         <div className="min-w-0 flex-1">
-          <Link href={`/modules/mx/work-orders/${wo.id}`} className="block hover:underline">
+          {/* Title — opens inspector instead of navigating */}
+          <button
+            onClick={() => onInspect(wo.id)}
+            className="block text-left hover:underline w-full"
+          >
             <p className="text-[11px] font-semibold text-content-primary leading-snug truncate">{wo.title}</p>
-          </Link>
+          </button>
           <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
             {wo.equipmentLabel && (
               <p className="text-[10px] text-content-muted truncate">{wo.equipmentLabel}</p>
@@ -323,6 +335,7 @@ function Lane({
   onUnassign,
   onAction,
   onNote,
+  onInspect,
 }: {
   icon:          React.ReactNode;
   label:         string;
@@ -334,6 +347,7 @@ function Lane({
   onUnassign:    (woId: string, mechanicId: string) => void;
   onAction:      (woId: string, status: MxWorkOrderStatus) => void;
   onNote:        (woId: string, note: string) => void;
+  onInspect:     (woId: string) => void;
 }) {
   if (wos.length === 0 && !isDropTarget) return null;
   return (
@@ -359,6 +373,7 @@ function Lane({
               onUnassign={onUnassign}
               onAction={onAction}
               onNote={onNote}
+              onInspect={onInspect}
             />
           ))}
           {isDropTarget && (
@@ -381,6 +396,8 @@ export default function MxSchedulingPage() {
   const [mechanics,    setMechanics]    = useState<CruWorker[]>([]);
   const [loadingMechs, setLoadingMechs] = useState(true);
   const [draggedWoId,  setDraggedWoId]  = useState<string | null>(null);
+  // Inspector — WO detail panel without leaving the board
+  const [inspectId,    setInspectId]    = useState<string | null>(null);
 
   const canAssign = canAssignMechanic(role);
   const canAct    = canUpdateWorkOrderStatus(role);
@@ -497,6 +514,7 @@ export default function MxSchedulingPage() {
                     isDragging={draggedWoId === wo.id}
                     onDragStart={() => setDraggedWoId(wo.id)}
                     onDragEnd={() => setDraggedWoId(null)}
+                    onInspect={setInspectId}
                   />
                 ))}
               </div>
@@ -522,6 +540,7 @@ export default function MxSchedulingPage() {
                     isDragging={false}
                     onDragStart={() => {}}
                     onDragEnd={() => {}}
+                    onInspect={setInspectId}
                   />
                 ))}
               </div>
@@ -597,6 +616,7 @@ export default function MxSchedulingPage() {
                         onUnassign={handleUnassign}
                         onAction={handleAction}
                         onNote={handleNote}
+                        onInspect={setInspectId}
                       />
                       <Lane
                         icon={<Clock size={10} className="text-teal" />}
@@ -608,6 +628,7 @@ export default function MxSchedulingPage() {
                         onUnassign={handleUnassign}
                         onAction={handleAction}
                         onNote={handleNote}
+                        onInspect={setInspectId}
                       />
                       <Lane
                         icon={<Inbox size={10} className="text-content-muted" />}
@@ -620,6 +641,7 @@ export default function MxSchedulingPage() {
                         onUnassign={handleUnassign}
                         onAction={handleAction}
                         onNote={handleNote}
+                        onInspect={setInspectId}
                       />
                       {lanes.waitingParts.length > 0 && (
                         <Lane
@@ -632,6 +654,7 @@ export default function MxSchedulingPage() {
                           onUnassign={handleUnassign}
                           onAction={handleAction}
                           onNote={handleNote}
+                          onInspect={setInspectId}
                         />
                       )}
                       {lanes.blocked.length > 0 && (
@@ -645,6 +668,7 @@ export default function MxSchedulingPage() {
                           onUnassign={handleUnassign}
                           onAction={handleAction}
                           onNote={handleNote}
+                          onInspect={setInspectId}
                         />
                       )}
                       {total === 0 && (
@@ -665,6 +689,13 @@ export default function MxSchedulingPage() {
         </div>
 
       </div>
+
+      {/* Inspector panel — stays over board without losing context */}
+      <WoInspectorPanel
+        woId={inspectId}
+        onClose={() => setInspectId(null)}
+      />
+
     </PageContainer>
   );
 }

@@ -12,14 +12,13 @@ import {
   POUR_STATUS_BADGE,
   canCreatePour,
   canApprovePour,
-  canCancelPour,
-  canEditPour,
   canSubmitForApproval,
 } from "@/lib/ops/pourRules";
 import { CreatePourModal } from "./CreatePourModal";
 import type { PourSaveAction } from "./CreatePourModal";
 import { PourCalendar } from "./PourCalendar";
 import { PourApprovalsPanel } from "./PourApprovalsPanel";
+import { PourInspectorPanel } from "@/components/ops/PourInspectorPanel";
 import { getJobsitesForUser } from "@/lib/ops/jobsites";
 import { useMx } from "@/providers/MxProvider";
 import { deriveProjectReadiness } from "@/lib/mx/readiness";
@@ -27,11 +26,11 @@ import type { ProjectReadiness } from "@/lib/mx/readiness";
 import { ACTIVE_STATUSES } from "@/lib/mx/rules";
 import {
   ArrowLeft, AlertTriangle, CheckCircle, Droplets,
-  Loader, Truck, Users, Plus, Clock, X, ChevronDown,
+  Loader, Truck, Users, Plus, Clock, ChevronDown,
   List, Calendar, ClipboardCheck, Wrench,
 } from "lucide-react";
 
-// ── CRU status display (legacy — CRU has its own simpler status model) ────────
+// ── CRU status display ────────────────────────────────────────────────────────
 
 const CRU_STATUS_BADGE: Record<string, string> = {
   planned:   "text-content-muted   border-surface-border    bg-surface-overlay",
@@ -39,25 +38,17 @@ const CRU_STATUS_BADGE: Record<string, string> = {
   completed: "text-status-success  border-status-success/30 bg-status-success/10",
 };
 
-// Date range for CRU query — same as before
+// Date range for CRU query
 const CRU_QUERY_START = "2026-04-01";
 const CRU_QUERY_END   = "2026-04-30";
 
-// ── Inline action state ───────────────────────────────────────────────────────
-
-type InlineAction =
-  | { type: "reject"; pourId: string; reason: string }
-  | { type: "cancel"; pourId: string; reason: string }
-  | null;
-
-// ── Modal state ───────────────────────────────────────────────────────────────
+// ── View mode ─────────────────────────────────────────────────────────────────
 
 type ViewMode = "list" | "calendar" | "approvals";
 
 type ModalState =
   | { mode: "create" }
   | { mode: "edit"; pour: PourEvent }
-  | { mode: "detail"; pour: PourEvent }
   | null;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -69,6 +60,7 @@ export default function PourSchedulePage() {
     () => getJobsitesForUser(currentOrganization.id, currentUser.id, role, availableProjects),
     [currentOrganization.id, currentUser.id, role, availableProjects],
   );
+
   const {
     pours,
     requests,
@@ -88,7 +80,6 @@ export default function PourSchedulePage() {
   // ── MX readiness signals ──────────────────────────────────────────────────
   const { workOrders: mxWorkOrders } = useMx();
 
-  // Per-pour readiness: maps pour.id → project-level blocking summary
   const pourReadiness = useMemo(() => {
     const map = new Map<string, ProjectReadiness>();
     for (const pour of pours) {
@@ -99,16 +90,15 @@ export default function PourSchedulePage() {
     return map;
   }, [pours, mxWorkOrders]);
 
-  // Count of active OPS-blocking MX WOs across the whole org (summary bar)
   const opsBlockingMxCount = useMemo(
     () => mxWorkOrders.filter((wo) => wo.opsBlocking && ACTIVE_STATUSES.includes(wo.status)).length,
     [mxWorkOrders],
   );
 
-  // ── CRU events (preserved existing behavior) ───────────────────────────────
-  const [cruEvents,   setCruEvents]   = useState<CruSiteEvent[]>([]);
-  const [loadingCru,  setLoadingCru]  = useState(true);
-  const [cruError,    setCruError]    = useState(false);
+  // ── CRU events ───────────────────────────────────────────────────────────
+  const [cruEvents,  setCruEvents]  = useState<CruSiteEvent[]>([]);
+  const [loadingCru, setLoadingCru] = useState(true);
+  const [cruError,   setCruError]   = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,7 +109,7 @@ export default function PourSchedulePage() {
     return () => { cancelled = true; };
   }, [cruOrgId]);
 
-  // ── Request dispatch state (preserved existing behavior) ──────────────────
+  // ── CRU dispatch state (pump/mason requests for CRU events) ──────────────
   const [masonPickerRowId, setMasonPickerRowId] = useState<string | null>(null);
   const [masonQty,         setMasonQty]         = useState(4);
   const [confirmedRows,    setConfirmedRows]     = useState<Record<string, Set<"pump" | "mason">>>({});
@@ -127,19 +117,21 @@ export default function PourSchedulePage() {
   // ── View mode ─────────────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
-  // ── Workflow UI state ─────────────────────────────────────────────────────
-  const [inlineAction, setInlineAction] = useState<InlineAction>(null);
-  const [modal,        setModal]        = useState<ModalState>(null);
+  // ── Inspector state — replaces centered PourDetailModal and inline forms ──
+  const [inspectPourId, setInspectPourId] = useState<string | null>(null);
+
+  // ── Create / Edit modal ───────────────────────────────────────────────────
+  const [modal, setModal] = useState<ModalState>(null);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
-  const activePours    = pours.filter((p) => p.status !== "Completed" && p.status !== "Canceled");
-  const totalYardage   = activePours.reduce((s, p) => s + p.yardage, 0);
-  const pendingCount   = pours.filter((p) => p.status === "Pending Approval").length;
-  const pumpCount      = activePours.filter((p) => p.pumpRequest.requested).length;
-  const conflictCount  = pours.filter((p) => p.conflicts && p.status !== "Canceled" && p.status !== "Completed").length;
-  const cruCount       = cruEvents.length;
+  const activePours   = pours.filter((p) => p.status !== "Completed" && p.status !== "Canceled");
+  const totalYardage  = activePours.reduce((s, p) => s + p.yardage, 0);
+  const pendingCount  = pours.filter((p) => p.status === "Pending Approval").length;
+  const pumpCount     = activePours.filter((p) => p.pumpRequest.requested).length;
+  const conflictCount = pours.filter((p) => p.conflicts && p.status !== "Canceled" && p.status !== "Completed").length;
+  const cruCount      = cruEvents.length;
 
-  // ── Pour-linked dispatch requests (pump + mason sourced from a pour) ──────
+  // ── Pour-linked dispatch requests ─────────────────────────────────────────
   const pourLinkedRequests = useMemo(
     () => requests.filter(
       (r) => r.sourcePourId && (r.type === "pump_truck" || r.type === "mason"),
@@ -147,7 +139,7 @@ export default function PourSchedulePage() {
     [requests],
   );
 
-  // ── Sorted pours (newest/soonest first; completed last) ───────────────────
+  // ── Sorted pours ──────────────────────────────────────────────────────────
   const sortedPours = useMemo(() => {
     return [...pours].sort((a, b) => {
       const aTerminal = a.status === "Completed" || a.status === "Canceled";
@@ -157,7 +149,14 @@ export default function PourSchedulePage() {
     });
   }, [pours]);
 
-  // ── Dispatch request helpers (preserved from original page) ───────────────
+  // ── Inspector-derived data ────────────────────────────────────────────────
+  const inspectPour     = inspectPourId ? pours.find((p) => p.id === inspectPourId) ?? null : null;
+  const inspectRequests = inspectPourId
+    ? requests.filter((r) => r.sourcePourId === inspectPourId)
+    : [];
+  const inspectReadiness = inspectPourId ? pourReadiness.get(inspectPourId) : undefined;
+
+  // ── CRU dispatch helpers ──────────────────────────────────────────────────
 
   function hasPendingDispatchRequest(jobsite: string, date: string, type: "pump_truck" | "mason"): boolean {
     return requests.some((r) => r.type === type && r.jobsite === jobsite && r.dateNeeded === date);
@@ -214,16 +213,12 @@ export default function PourSchedulePage() {
     approvePour(id, role, currentUser.id, currentUser.name);
   }
 
-  function handleRejectConfirm() {
-    if (!inlineAction || inlineAction.type !== "reject") return;
-    rejectPour(inlineAction.pourId, inlineAction.reason, role, currentUser.id, currentUser.name);
-    setInlineAction(null);
+  function handleReject(id: string, reason: string) {
+    rejectPour(id, reason, role, currentUser.id, currentUser.name);
   }
 
-  function handleCancelConfirm() {
-    if (!inlineAction || inlineAction.type !== "cancel") return;
-    cancelPour(inlineAction.pourId, inlineAction.reason, role, currentUser.id, currentUser.name);
-    setInlineAction(null);
+  function handleCancel(id: string, reason: string) {
+    cancelPour(id, reason, role, currentUser.id, currentUser.name);
   }
 
   // ── Create / Edit modal handlers ──────────────────────────────────────────
@@ -235,7 +230,6 @@ export default function PourSchedulePage() {
       } else if (action === "submit") {
         editPour(modal.pour.id, input, role, currentUser.id, { submitForApproval: true });
       } else {
-        // "draft" — save without changing status (keeps Draft/Rejected as-is)
         editPour(modal.pour.id, input, role, currentUser.id);
       }
     } else if (modal?.mode === "create") {
@@ -245,6 +239,18 @@ export default function PourSchedulePage() {
   }
 
   const userCanCreate = canCreatePour(role);
+
+  // Open the inspector for a pour (from list row click or calendar click)
+  function handlePourClick(pour: PourEvent) {
+    setInspectPourId(pour.id);
+  }
+
+  // Edit action from inspector
+  function handleInspectorEdit() {
+    if (!inspectPour) return;
+    setInspectPourId(null);
+    setModal({ mode: "edit", pour: inspectPour });
+  }
 
   return (
     <PageContainer maxWidth="wide">
@@ -306,32 +312,6 @@ export default function PourSchedulePage() {
               <Calendar size={13} />
               Calendar
             </button>
-            {/* TODO: repurpose this toggle slot — approvals entry point is the summary tile for now
-            {canApprovePour(role) && (
-              <>
-                <div className="w-px h-5 bg-surface-border" />
-                <button
-                  onClick={() => setViewMode("approvals")}
-                  aria-label="Approvals view"
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                    viewMode === "approvals"
-                      ? "bg-surface-overlay text-content-primary"
-                      : pendingCount > 0
-                      ? "text-status-warning hover:text-status-warning/80"
-                      : "text-content-muted hover:text-content-primary"
-                  }`}
-                >
-                  <ClipboardCheck size={13} />
-                  Approvals
-                  {pendingCount > 0 && (
-                    <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-status-warning text-white text-[9px] font-bold flex items-center justify-center">
-                      {pendingCount}
-                    </span>
-                  )}
-                </button>
-              </>
-            )}
-            */}
           </div>
 
           {userCanCreate && (
@@ -406,7 +386,7 @@ export default function PourSchedulePage() {
           role={role}
           userId={currentUser.id}
           userName={currentUser.name}
-          cruOrgId={currentOrganization.cruOrgId ?? currentOrganization.id}
+          cruOrgId={cruOrgId}
           onApprovePour={(id) => approvePour(id, role, currentUser.id, currentUser.name)}
           onRejectPour={(id, reason) => rejectPour(id, reason, role, currentUser.id, currentUser.name)}
           onApproveRequest={approveRequest}
@@ -421,59 +401,67 @@ export default function PourSchedulePage() {
           <PourCalendar
             pours={pours}
             requests={requests}
-            onPourClick={(pour) => setModal({ mode: "detail", pour })}
+            onPourClick={handlePourClick}
           />
         </div>
       )}
 
       {/* ── OPS Pour Table (List View) ──────────────────────────────────────── */}
       {viewMode === "list" && (
-      <div className="bg-surface-raised border border-surface-border rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-card)] mb-6">
-        <div className="px-5 py-3 border-b border-surface-border flex items-center gap-2">
-          <span className="text-xs font-bold text-content-primary">OPS Pours</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest border border-surface-border bg-surface-overlay text-content-muted rounded-[var(--radius-badge)] px-1.5 py-0.5">
-            {pours.length}
-          </span>
-        </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-surface-border">
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-5 py-3">Location</th>
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Date / Time</th>
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden md:table-cell">Type</th>
-              <th className="text-right text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Yardage</th>
-              <th className="text-center text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden sm:table-cell">Resources</th>
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden lg:table-cell">Requested By</th>
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Status</th>
-              <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border">
-            {sortedPours.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-5 py-6 text-center text-xs text-content-muted">
-                  No pours scheduled yet.
-                  {userCanCreate && (
-                    <button
-                      onClick={() => setModal({ mode: "create" })}
-                      className="ml-1 text-gold hover:underline"
-                    >
-                      Create the first one.
-                    </button>
-                  )}
-                </td>
+        <div className="bg-surface-raised border border-surface-border rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-card)] mb-6">
+          <div className="px-5 py-3 border-b border-surface-border flex items-center gap-2">
+            <span className="text-xs font-bold text-content-primary">OPS Pours</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest border border-surface-border bg-surface-overlay text-content-muted rounded-[var(--radius-badge)] px-1.5 py-0.5">
+              {pours.length}
+            </span>
+            <span className="ml-auto text-[10px] text-content-muted">Click a row to review details and actions</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-surface-border">
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-5 py-3">Location</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Date / Time</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden md:table-cell">Type</th>
+                <th className="text-right text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Yardage</th>
+                <th className="text-center text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden sm:table-cell">Resources</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3 hidden lg:table-cell">Requested By</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Status</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-content-muted px-4 py-3">Action</th>
               </tr>
-            )}
-            {sortedPours.map((pour) => {
-              const isInlineOpen = inlineAction?.pourId === pour.id;
-              const pourRequests = requests.filter((r) => r.sourcePourId === pour.id);
-              const mxReadiness  = pourReadiness.get(pour.id);
-              const hasMxRisk    = (mxReadiness?.opsBlockingCount ?? 0) > 0;
+            </thead>
+            <tbody className="divide-y divide-surface-border">
+              {sortedPours.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-5 py-6 text-center text-xs text-content-muted">
+                    No pours scheduled yet.
+                    {userCanCreate && (
+                      <button
+                        onClick={() => setModal({ mode: "create" })}
+                        className="ml-1 text-gold hover:underline"
+                      >
+                        Create the first one.
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )}
+              {sortedPours.map((pour) => {
+                const pourRequests  = requests.filter((r) => r.sourcePourId === pour.id);
+                const mxReadiness   = pourReadiness.get(pour.id);
+                const hasMxRisk     = (mxReadiness?.opsBlockingCount ?? 0) > 0;
+                const isSelected    = inspectPourId === pour.id;
+                const isTerminal    = pour.status === "Completed" || pour.status === "Canceled";
 
-              return (
-                <React.Fragment key={pour.id}>
-                  <tr className="hover:bg-surface-overlay transition-colors">
-
+                return (
+                  <tr
+                    key={pour.id}
+                    onClick={() => handlePourClick(pour)}
+                    className={`transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-gold/5 border-l-2 border-l-gold"
+                        : "hover:bg-surface-overlay"
+                    }`}
+                  >
                     {/* Location */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
@@ -491,18 +479,16 @@ export default function PourSchedulePage() {
                           Rejected: {pour.rejectionReason}
                         </p>
                       )}
-                      {/* MX equipment risk signal */}
                       {hasMxRisk && (
-                        <Link
-                          href="/modules/mx/readiness"
-                          className="inline-flex items-center gap-1 mt-1 group"
+                        <span
+                          className="inline-flex items-center gap-1 mt-1"
                           title="Active OPS-blocking MX work orders at this site"
                         >
                           <Wrench size={10} className="text-status-critical shrink-0" />
-                          <span className="text-[10px] font-semibold text-status-critical group-hover:underline">
+                          <span className="text-[10px] font-semibold text-status-critical">
                             {mxReadiness!.opsBlockingCount} blocking MX WO{mxReadiness!.opsBlockingCount !== 1 ? "s" : ""}
                           </span>
-                        </Link>
+                        </span>
                       )}
                     </td>
 
@@ -567,47 +553,44 @@ export default function PourSchedulePage() {
                       </span>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-3.5">
-                      <OpsActions
-                        pour={pour}
-                        role={role}
-                        userId={currentUser.id}
-                        inlineOpen={isInlineOpen}
-                        pourRequests={pourRequests}
-                        onSubmitForApproval={() => handleSubmitForApproval(pour.id)}
-                        onApprove={() => handleApprove(pour.id)}
-                        onStartReject={() => setInlineAction({ type: "reject", pourId: pour.id, reason: "" })}
-                        onStartCancel={() => setInlineAction({ type: "cancel", pourId: pour.id, reason: "" })}
-                        onEdit={() => setModal({ mode: "edit", pour })}
-                      />
+                    {/* Action — single primary action, or open-inspector cue */}
+                    <td
+                      className="px-4 py-3.5"
+                      onClick={(e) => e.stopPropagation()} // prevent double-trigger on button click
+                    >
+                      {isTerminal ? (
+                        <span className="text-xs text-content-muted">—</span>
+                      ) : canApprovePour(role) && pour.status === "Pending Approval" ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleApprove(pour.id); }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors whitespace-nowrap"
+                        >
+                          <CheckCircle size={11} />
+                          Approve
+                        </button>
+                      ) : canSubmitForApproval(role, pour, currentUser.id) ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSubmitForApproval(pour.id); }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-status-warning/30 text-status-warning hover:bg-status-warning/10 transition-colors whitespace-nowrap"
+                        >
+                          <ChevronDown size={11} />
+                          Submit
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-content-muted italic">
+                          Click to review
+                        </span>
+                      )}
                     </td>
                   </tr>
-
-                  {/* Inline action row */}
-                  {isInlineOpen && (
-                    <tr className="bg-surface-overlay">
-                      <td colSpan={8} className="px-5 py-3">
-                        <InlineActionForm
-                          action={inlineAction!}
-                          onReasonChange={(reason) =>
-                            setInlineAction((prev) => prev ? { ...prev, reason } : prev)
-                          }
-                          onConfirm={inlineAction?.type === "reject" ? handleRejectConfirm : handleCancelConfirm}
-                          onCancel={() => setInlineAction(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {/* ── CRU Events Table (preserved existing display behavior) ──────────── */}
+      {/* ── CRU Events Table ───────────────────────────────────────────────── */}
       {(cruEvents.length > 0 || loadingCru) && (
         <div className="bg-surface-raised border border-surface-border rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-card)]">
           <div className="px-5 py-3 border-b border-surface-border flex items-center gap-2">
@@ -631,8 +614,8 @@ export default function PourSchedulePage() {
             </thead>
             <tbody className="divide-y divide-surface-border">
               {cruEvents.map((e) => {
-                const rowId     = e.id;
-                const jobsite   = e.siteName;
+                const rowId      = e.id;
+                const jobsite    = e.siteName;
                 const isComplete = e.status === "completed";
                 return (
                   <tr key={rowId} className="hover:bg-surface-overlay transition-colors">
@@ -705,190 +688,44 @@ export default function PourSchedulePage() {
         />
       )}
 
-      {/* ── Pour detail panel (calendar click-through) ───────────────────── */}
-      {modal?.mode === "detail" && (
-        <PourDetailModal
-          pour={modal.pour}
-          requests={requests.filter((r) => r.sourcePourId === modal.pour.id)}
-          onClose={() => setModal(null)}
-          onEdit={
-            canEditPour(role, modal.pour, currentUser.id)
-              ? () => setModal({ mode: "edit", pour: modal.pour })
-              : undefined
-          }
-          projectReadiness={pourReadiness.get(modal.pour.id)}
-        />
-      )}
+      {/* ── Pour inspector panel ──────────────────────────────────────────── */}
+      <PourInspectorPanel
+        pour={inspectPour}
+        requests={inspectRequests}
+        projectReadiness={inspectReadiness}
+        role={role}
+        userId={currentUser.id}
+        onClose={() => setInspectPourId(null)}
+        onEdit={handleInspectorEdit}
+        onSubmitForApproval={handleSubmitForApproval}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onCancel={handleCancel}
+      />
+
     </PageContainer>
   );
 }
 
-// ── OPS row actions ───────────────────────────────────────────────────────────
-
-interface OpsActionsProps {
-  pour:                PourEvent;
-  role:                import("@/types/org").UserRole;
-  userId:              string;
-  inlineOpen:          boolean;
-  /** Dispatch requests auto-created when this pour was approved (sourcePourId linkage). */
-  pourRequests:        OpsRequest[];
-  onSubmitForApproval: () => void;
-  onApprove:           () => void;
-  onStartReject:       () => void;
-  onStartCancel:       () => void;
-  onEdit:              () => void;
-}
-
-function OpsActions({
-  pour, role, userId, inlineOpen, pourRequests,
-  onSubmitForApproval, onApprove, onStartReject, onStartCancel, onEdit,
-}: OpsActionsProps) {
-  if (pour.status === "Completed" || pour.status === "Canceled") {
-    return <span className="text-xs text-content-muted">—</span>;
-  }
-  if (inlineOpen) {
-    return <span className="text-xs text-content-muted italic">…</span>;
-  }
-
-  const showSubmit  = canSubmitForApproval(role, pour, userId);
-  const showApprove = canApprovePour(role) && pour.status === "Pending Approval";
-  const showReject  = canApprovePour(role) && pour.status === "Pending Approval";
-  const showEdit    = canEditPour(role, pour, userId);
-  const showCancel  = canCancelPour(role, pour, userId);
-  const showDispatchStatus =
-    pour.status === "Approved" || pour.status === "In Progress";
-
-  return (
-    <div className="flex flex-col gap-1.5 min-w-[140px]">
-
-      {/* Workflow actions */}
-      {showSubmit && (
-        <button
-          onClick={onSubmitForApproval}
-          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-status-warning/30 text-status-warning hover:bg-status-warning/10 transition-colors whitespace-nowrap"
-        >
-          <ChevronDown size={11} />
-          Submit for Approval
-        </button>
-      )}
-      {showApprove && (
-        <button
-          onClick={onApprove}
-          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors whitespace-nowrap"
-        >
-          <CheckCircle size={11} />
-          Approve
-        </button>
-      )}
-      {showReject && (
-        <button
-          onClick={onStartReject}
-          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-status-error/30 text-status-error hover:bg-status-error/10 transition-colors"
-        >
-          <X size={11} />
-          Reject
-        </button>
-      )}
-      {showEdit && (
-        <button
-          onClick={onEdit}
-          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border border-surface-border text-content-secondary hover:border-gold/30 hover:text-gold transition-colors"
-        >
-          Edit
-        </button>
-      )}
-      {showCancel && (
-        <button
-          onClick={onStartCancel}
-          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg text-content-muted hover:text-status-error transition-colors"
-        >
-          Cancel Pour
-        </button>
-      )}
-
-      {/* Dispatch request status — auto-created on approval, no manual button needed */}
-      {showDispatchStatus && (
-        <div className="flex flex-col gap-1 mt-0.5 pt-1.5 border-t border-surface-border">
-          {pour.pumpRequest.requested && (
-            <DispatchStatus
-              icon={<Truck size={10} />}
-              label="Pump"
-              request={pourRequests.find((r) => r.type === "pump_truck")}
-            />
-          )}
-          {pour.masonRequest.requested && (
-            <DispatchStatus
-              icon={<Users size={10} />}
-              label={`Masons${pour.masonRequest.masonCount ? ` ×${pour.masonRequest.masonCount}` : ""}`}
-              request={pourRequests.find((r) => r.type === "mason")}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Dispatch status display ───────────────────────────────────────────────────
-
-interface DispatchStatusProps {
-  icon:     React.ReactNode;
-  label:    string;
-  request?: OpsRequest;
-}
-
-function DispatchStatus({ icon, label, request }: DispatchStatusProps) {
-  if (!request) {
-    return (
-      <div className="flex items-center gap-1 text-[10px] text-content-muted">
-        {icon}
-        <span>{label}:</span>
-        <span className="italic">not dispatched</span>
-      </div>
-    );
-  }
-
-  const styles: Record<string, string> = {
-    pending:  "text-status-warning  border-status-warning/30  bg-status-warning/10",
-    approved: "text-gold            border-gold/30            bg-gold/10",
-    assigned: "text-status-success  border-status-success/30  bg-status-success/10",
-  };
-
-  return (
-    <div className="flex items-center gap-1 flex-wrap">
-      <span className="inline-flex items-center gap-1 text-[10px] text-content-muted">
-        {icon}
-        {label}:
-      </span>
-      <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest border rounded-[var(--radius-badge)] px-1.5 py-0.5 ${styles[request.status] ?? styles.pending}`}>
-        {request.status === "assigned" && <CheckCircle size={9} />}
-        {request.status === "assigned"
-          ? (request.assignedToLabel ?? "Assigned")
-          : request.status}
-      </span>
-    </div>
-  );
-}
-
-// ── CRU dispatch actions (extracted, same as original) ────────────────────────
+// ── CRU dispatch actions (unchanged from original) ────────────────────────────
 
 interface CruDispatchActionsProps {
-  rowId:              string;
-  jobsite:            string;
-  date:               string;
-  yardage:            number;
-  pumpRequired:       boolean;
-  masonPickerOpen:    boolean;
-  masonQty:           number;
-  pumpConfirmed:      boolean;
-  masonConfirmed:     boolean;
-  hasPumpRequest:     boolean;
-  hasMasonRequest:    boolean;
-  onRequestPump:      () => void;
-  onOpenMasonPicker:  () => void;
-  onMasonQtyChange:   (v: number) => void;
-  onConfirmMasons:    () => void;
-  onCancelMasonPicker:() => void;
+  rowId:               string;
+  jobsite:             string;
+  date:                string;
+  yardage:             number;
+  pumpRequired:        boolean;
+  masonPickerOpen:     boolean;
+  masonQty:            number;
+  pumpConfirmed:       boolean;
+  masonConfirmed:      boolean;
+  hasPumpRequest:      boolean;
+  hasMasonRequest:     boolean;
+  onRequestPump:       () => void;
+  onOpenMasonPicker:   () => void;
+  onMasonQtyChange:    (v: number) => void;
+  onConfirmMasons:     () => void;
+  onCancelMasonPicker: () => void;
 }
 
 function CruDispatchActions({
@@ -942,264 +779,6 @@ function CruDispatchActions({
           <Users size={11} /> Request Masons
         </button>
       )}
-    </div>
-  );
-}
-
-// ── Inline action form ────────────────────────────────────────────────────────
-
-interface InlineActionFormProps {
-  action:         NonNullable<InlineAction>;
-  onReasonChange: (v: string) => void;
-  onConfirm:      () => void;
-  onCancel:       () => void;
-}
-
-function InlineActionForm({ action, onReasonChange, onConfirm, onCancel }: InlineActionFormProps) {
-  const isReject = action.type === "reject";
-  return (
-    <div className="flex items-start gap-3 flex-wrap">
-      <div className="flex-1 min-w-[220px]">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-content-muted block mb-1">
-          {isReject ? "Rejection reason" : "Cancellation reason"}
-        </label>
-        <input
-          type="text"
-          autoFocus
-          placeholder={isReject ? "e.g. Resource conflict on that date" : "e.g. Weather conditions"}
-          value={action.reason}
-          onChange={(e) => onReasonChange(e.target.value)}
-          className="w-full text-xs bg-surface-overlay border border-surface-border rounded-lg px-3 py-1.5 text-content-primary focus:outline-none focus:border-gold"
-        />
-      </div>
-      <div className="flex items-end gap-2 pb-0.5">
-        <button
-          onClick={onConfirm}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-            isReject
-              ? "bg-status-error hover:bg-status-error/90 text-white"
-              : "bg-surface-border hover:bg-surface-border/80 text-content-primary"
-          }`}
-        >
-          {isReject ? "Reject Pour" : "Confirm Cancel"}
-        </button>
-        <button
-          onClick={onCancel}
-          className="text-xs text-content-muted hover:text-content-primary transition-colors"
-        >
-          Never mind
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Pour detail modal (calendar click-through) ────────────────────────────────
-
-interface PourDetailModalProps {
-  pour:               PourEvent;
-  /** Dispatch requests linked to this pour (already filtered to sourcePourId). */
-  requests:           OpsRequest[];
-  onClose:            () => void;
-  onEdit?:            () => void;
-  /** MX project-level readiness — present when the pour has a jobsiteId. */
-  projectReadiness?:  ProjectReadiness;
-}
-
-function PourDetailModal({ pour, requests, onClose, onEdit, projectReadiness }: PourDetailModalProps) {
-  const pumpReq  = requests.find((r) => r.type === "pump_truck");
-  const masonReq = requests.find((r) => r.type === "mason");
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal
-      aria-label="Pour details"
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-sm bg-surface-raised border border-surface-border rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden">
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-surface-border">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted mb-0.5">
-              Pour Details
-            </p>
-            <h2 className="text-sm font-bold text-content-primary truncate">{pour.location}</h2>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`inline-flex items-center text-[10px] font-bold uppercase tracking-widest border rounded-[var(--radius-badge)] px-1.5 py-0.5 ${POUR_STATUS_BADGE[pour.status]}`}
-            >
-              {pour.status}
-            </span>
-            <button
-              onClick={onClose}
-              className="text-content-muted hover:text-content-primary transition-colors"
-              aria-label="Close"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-5 py-4 space-y-3">
-
-          {/* Date / Time */}
-          <div className="flex items-start gap-3">
-            <Clock size={14} className="text-content-muted mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-semibold text-content-primary">{pour.date}</p>
-              <p className="text-xs text-content-muted">{pour.time}</p>
-            </div>
-          </div>
-
-          {/* Pour type + yardage */}
-          <div className="flex items-center gap-3 text-xs text-content-secondary">
-            <Droplets size={14} className="text-content-muted shrink-0" />
-            <span>
-              <span className="font-semibold text-content-primary">{pour.pourType}</span>
-              <span className="text-content-muted ml-2">{pour.yardage} yd³</span>
-              {pour.estimatedDuration && (
-                <span className="text-content-muted ml-2">· ~{pour.estimatedDuration}</span>
-              )}
-            </span>
-          </div>
-
-          {/* Resources + assignment */}
-          {(pour.pumpRequest.requested || pour.masonRequest.requested) && (
-            <div className="flex flex-col gap-2 border-t border-surface-border pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted">Resources</p>
-
-              {pour.pumpRequest.requested && (
-                <div className="flex items-start gap-2">
-                  <Truck size={13} className={`shrink-0 mt-0.5 ${pumpReq?.status === "assigned" ? "text-status-success" : "text-gold"}`} />
-                  <div className="min-w-0">
-                    <p className="text-xs text-content-secondary">
-                      Pump truck
-                      {pour.pumpRequest.pumpType && (
-                        <span className="text-content-muted ml-1">({pour.pumpRequest.pumpType})</span>
-                      )}
-                    </p>
-                    {pumpReq ? (
-                      <p className={`text-xs font-semibold mt-0.5 ${
-                        pumpReq.status === "assigned" ? "text-status-success" :
-                        pumpReq.status === "approved" ? "text-gold" :
-                        "text-content-muted"
-                      }`}>
-                        {pumpReq.status === "assigned"
-                          ? (pumpReq.assignedToLabel ?? "Assigned")
-                          : pumpReq.status === "approved"
-                          ? "Approved — awaiting dispatch"
-                          : "Pending dispatch"}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-content-muted italic mt-0.5">Not yet dispatched</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {pour.masonRequest.requested && (
-                <div className="flex items-start gap-2">
-                  <Users size={13} className={`shrink-0 mt-0.5 ${masonReq?.status === "assigned" ? "text-status-success" : "text-content-muted"}`} />
-                  <div className="min-w-0">
-                    <p className="text-xs text-content-secondary">
-                      {pour.masonRequest.masonCount ?? "?"} masons
-                    </p>
-                    {masonReq ? (
-                      <p className={`text-xs font-semibold mt-0.5 ${
-                        masonReq.status === "assigned" ? "text-status-success" :
-                        masonReq.status === "approved" ? "text-gold" :
-                        "text-content-muted"
-                      }`}>
-                        {masonReq.status === "assigned"
-                          ? (masonReq.assignedToLabel ?? "Assigned")
-                          : masonReq.status === "approved"
-                          ? "Approved — awaiting dispatch"
-                          : "Pending dispatch"}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-content-muted italic mt-0.5">Not yet dispatched</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Site Readiness — project-level MX signals only (no specific asset link exists yet) */}
-          {projectReadiness && projectReadiness.opsBlockingCount > 0 && (
-            <div className="border-t border-surface-border pt-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-content-muted mb-2">
-                Site Readiness
-              </p>
-              <div className="flex items-start gap-2">
-                <Wrench size={13} className="text-status-critical shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-status-critical">
-                    {projectReadiness.opsBlockingCount} blocking MX WO{projectReadiness.opsBlockingCount !== 1 ? "s" : ""} at this site
-                  </p>
-                  <p className="text-[10px] text-content-muted mt-0.5 leading-relaxed">
-                    Project equipment risk — not linked to a specific assigned asset.
-                  </p>
-                  <Link
-                    href="/modules/mx/readiness"
-                    className="block text-[10px] text-teal hover:underline mt-2"
-                  >
-                    View Blocking Issues in MX →
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Notes */}
-          {pour.notes && (
-            <p className="text-xs text-content-muted border-t border-surface-border pt-3">
-              {pour.notes}
-            </p>
-          )}
-
-          {/* Meta */}
-          <div className="border-t border-surface-border pt-3 space-y-1">
-            <p className="text-[10px] text-content-muted">
-              Created by <span className="text-content-secondary">{pour.createdByName}</span>
-            </p>
-            {pour.approvedByName && (
-              <p className="text-[10px] text-content-muted">
-                Approved by <span className="text-content-secondary">{pour.approvedByName}</span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-surface-border flex items-center justify-end gap-2">
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-surface-border text-content-secondary hover:border-gold/30 hover:text-gold transition-colors"
-            >
-              Edit
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-surface-border text-content-secondary hover:text-content-primary transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
