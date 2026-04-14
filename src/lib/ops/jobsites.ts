@@ -42,6 +42,10 @@ const MOCK_FIELD_ASSIGNMENTS: Record<string, string[]> = {
   "user_foreman_001": [
     "proj_riverside_006",
   ],
+  // Tony Reeves — mechanic persona (cru_w_001), assigned to Highland Tower
+  "cru_w_001": [
+    "proj_highland_002",   // Highland Tower — Phase 2
+  ],
 };
 
 // ── Public API ────────────────────────────────────────────────────────────────

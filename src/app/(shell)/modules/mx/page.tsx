@@ -1,9 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { Card } from "@/components/ui/Card";
 import { Wrench, CalendarClock, Activity, ArrowUpRight, ClipboardList, LayoutDashboard } from "lucide-react";
-
-export const metadata = { title: "MX — Maintenance Execution" };
+import { useOrg } from "@/providers/OrgProvider";
 
 const FEATURES = [
   {
@@ -39,6 +40,10 @@ const FEATURES = [
 ];
 
 export default function MxPage() {
+  const { role } = useOrg();
+  const showMyWork = role === "mechanic" || role === "owner" || role === "admin";
+  const features = FEATURES.filter((f) => f.href !== "/modules/mx/my-work" || showMyWork);
+
   return (
     <PageContainer>
 
@@ -65,7 +70,7 @@ export default function MxPage() {
 
       {/* ── Feature Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {FEATURES.map((f) => (
+        {features.map((f) => (
           <Link key={f.title} href={f.href}>
             <Card variant="default" className="h-full hover:border-teal/25 transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded-lg bg-teal/10 border border-teal/20 flex items-center justify-center mb-3">

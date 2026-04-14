@@ -1,4 +1,27 @@
-import type { OrgConfig, ProjectContext } from "@/types/org";
+import type { OrgConfig, ProjectContext, UserRole } from "@/types/org";
+
+/* ─────────────────────────────────────────────────────────
+   Mock user personas for dev role-switching
+   Mechanic swaps to Tony Reeves (cru_w_001) to match MX mock assignedMechanicIds.
+   All other roles reset to Marcus Webb (user_owner_001).
+   ───────────────────────────────────────────────────────── */
+export const DEFAULT_USER: OrgConfig["currentUser"] = {
+  id:     "user_owner_001",
+  name:   "Marcus Webb",
+  email:  "marcus@aigaconstruction.com",
+  role:   "owner",
+  avatar: null,
+};
+
+export const MOCK_USER_BY_ROLE: Partial<Record<UserRole, OrgConfig["currentUser"]>> = {
+  mechanic: {
+    id:     "cru_w_001",
+    name:   "Tony Reeves",
+    email:  "tony@aigaconstruction.com",
+    role:   "mechanic",
+    avatar: null,
+  },
+};
 
 /* ─────────────────────────────────────────────────────────
    Mock selectable projects (used by ProjectSelector)

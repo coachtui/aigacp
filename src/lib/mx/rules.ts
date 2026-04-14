@@ -37,22 +37,22 @@ export const TERMINAL_STATUSES: MxWorkOrderStatus[] = ["completed", "canceled"];
 
 /** Roles that can create a new work order */
 export function canCreateWorkOrder(role: UserRole): boolean {
-  return ["owner", "admin", "pm", "project_engineer", "superintendent", "foreman", "mechanic"].includes(role);
+  return ["owner", "admin", "mechanic"].includes(role);
 }
 
 /** Roles that can approve a work order (move from triage → approved) */
 export function canApproveWorkOrder(role: UserRole): boolean {
-  return ["owner", "admin", "pm", "superintendent"].includes(role);
+  return ["owner", "admin"].includes(role);
 }
 
 /** Roles that can assign mechanics to a work order */
 export function canAssignMechanic(role: UserRole): boolean {
-  return ["owner", "admin", "pm", "superintendent", "foreman"].includes(role);
+  return ["owner", "admin"].includes(role);
 }
 
-/** Can this actor cancel or update status on this work order? */
+/** Can this actor update status on a work order? */
 export function canUpdateWorkOrderStatus(role: UserRole): boolean {
-  return ["owner", "admin", "pm", "superintendent", "foreman", "mechanic"].includes(role);
+  return ["owner", "admin", "mechanic"].includes(role);
 }
 
 // ── Label maps ────────────────────────────────────────────────────────────────

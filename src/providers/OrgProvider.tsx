@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState } from "react";
 import type { OrgConfig, ProjectContext, ModuleId, UserRole } from "@/types/org";
 import type { ModuleFeatureMap } from "@/types/org";
-import { getOrgConfig, MOCK_PROJECTS } from "@/lib/config/org";
+import { getOrgConfig, MOCK_PROJECTS, MOCK_USER_BY_ROLE, DEFAULT_USER } from "@/lib/config/org";
 
 interface OrgContextValue {
   currentOrganization: OrgConfig["org"];
@@ -31,7 +31,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   function setRole(role: UserRole) {
     setConfig((prev) => ({
       ...prev,
-      currentUser: { ...prev.currentUser, role },
+      currentUser: MOCK_USER_BY_ROLE[role] ?? { ...DEFAULT_USER, role },
     }));
   }
 
