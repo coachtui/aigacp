@@ -1,0 +1,52 @@
+/**
+ * OrgWorkforceRegistry — Phase 1: thin wrapper over the CRU integration adapter.
+ * Phase 3: worker records live in AIGACP; CRU syncs from here.
+ *
+ * All module code that needs workforce data should import from here,
+ * not from @/lib/integrations/cru directly.
+ */
+
+import {
+  getCruWorkersForOrg,
+  getCruWorkersByRole,
+  getCruMechanicsAndDrivers,
+  type CruWorker,
+} from "@/lib/integrations/cru";
+
+export interface OrgWorker {
+  id:                string;
+  name:              string;
+  role:              string;
+  orgId:             string;
+  projectId?:        string;
+  available:         boolean;
+  activeAssignment?: string;
+  source:            "cru" | "local";
+}
+
+function toOrgWorker(orgId: string) {
+  return (w: CruWorker): OrgWorker => ({
+    id:        w.id,
+    name:      w.name,
+    role:      w.role,
+    orgId,
+    projectId: w.siteId,
+    available: w.available,
+    source:    "cru",
+  });
+}
+
+export async function getOrgWorkforce(orgId: string, siteId?: string): Promise<OrgWorker[]> {
+  const workers = await getCruWorkersForOrg(orgId, siteId);
+  return workers.map(toOrgWorker(orgId));
+}
+
+export async function getOrgWorkersByRole(orgId: string, role: string): Promise<OrgWorker[]> {
+  const workers = await getCruWorkersByRole(orgId, role);
+  return workers.map(toOrgWorker(orgId));
+}
+
+export async function getOrgMechanicsAndDrivers(orgId: string): Promise<OrgWorker[]> {
+  const workers = await getCruMechanicsAndDrivers(orgId);
+  return workers.map(toOrgWorker(orgId));
+}
