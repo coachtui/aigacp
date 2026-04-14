@@ -14,13 +14,6 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: "Workflows",
-    items: [
-      { label: "Field Operations",        href: "/workflows/field-operations", icon: "MapPin" },
-      { label: "Equipment Intelligence",  href: "/workflows/equipment",        icon: "Wrench" },
-    ],
-  },
-  {
     title: "Modules",
     items: [
       { label: "CRU",     href: "/modules/cru",     icon: "Users" },
