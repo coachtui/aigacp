@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState } from "react";
 import type { OrgConfig, ProjectContext, ModuleId, UserRole } from "@/types/org";
 import type { ModuleFeatureMap } from "@/types/org";
+import type { Issue, ActivityEvent } from "@/types/domain";
 import { getOrgConfig, MOCK_PROJECTS, MOCK_USER_BY_ROLE, DEFAULT_USER } from "@/lib/config/org";
 import { getModulesForBundles } from "@/lib/modules/bundles";
 
@@ -18,12 +19,26 @@ interface OrgContextValue {
   setRole:             (role: UserRole) => void;
   isModuleEnabled:     (id: ModuleId) => boolean;
   getModuleFeatures:   (id: ModuleId) => ModuleFeatureMap;
+  emittedIssues:       Issue[];
+  emittedActivity:     ActivityEvent[];
+  addEmittedIssue:     (issue: Issue) => void;
+  addEmittedActivity:  (event: ActivityEvent) => void;
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null);
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<OrgConfig>(getOrgConfig);
+  const [emittedIssues,   setEmittedIssues]   = useState<Issue[]>([]);
+  const [emittedActivity, setEmittedActivity] = useState<ActivityEvent[]>([]);
+
+  function addEmittedIssue(issue: Issue): void {
+    setEmittedIssues((prev) => [issue, ...prev]);
+  }
+
+  function addEmittedActivity(event: ActivityEvent): void {
+    setEmittedActivity((prev) => [event, ...prev]);
+  }
 
   function setCurrentProject(project: ProjectContext) {
     setConfig((prev) => ({ ...prev, currentProject: project }));
@@ -60,6 +75,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         setRole,
         isModuleEnabled,
         getModuleFeatures,
+        emittedIssues,
+        emittedActivity,
+        addEmittedIssue,
+        addEmittedActivity,
       }}
     >
       {children}
