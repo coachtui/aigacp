@@ -1,5 +1,9 @@
 export type ModuleId = "cru" | "fix" | "inspect" | "datum" | "ops" | "mx";
 
+export type BundleId = "field_ops" | "equipment" | "operations";
+
+export type ModuleScope = "full" | "read" | "my_work" | "field" | "hidden";
+
 export type UserRole =
   | "owner"
   | "admin"
