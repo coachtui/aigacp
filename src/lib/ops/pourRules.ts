@@ -145,11 +145,11 @@ export function canSubmitForApproval(
 // ── Status badge styles ───────────────────────────────────────────────────────
 
 export const POUR_STATUS_BADGE: Record<PourStatus, string> = {
-  "Draft":            "text-content-muted   border-surface-border    bg-surface-overlay",
+  "Draft":            "text-content-secondary border-content-muted/30 bg-content-muted/15",
   "Pending Approval": "text-status-warning  border-status-warning/30 bg-status-warning/10",
   "Approved":         "text-gold            border-gold/30           bg-gold/10",
   "Rejected":         "text-status-error    border-status-error/30   bg-status-error/10",
-  "Canceled":         "text-content-muted   border-surface-border    bg-surface-overlay",
+  "Canceled":         "text-content-muted   border-content-muted/25  bg-content-muted/10",
   "In Progress":      "text-blue-brand      border-blue-brand/30     bg-blue-brand/10",
   "Completed":        "text-status-success  border-status-success/30 bg-status-success/10",
 };

@@ -100,10 +100,10 @@ export default function MxReadinessPage() {
           </p>
           <p className="text-xs text-content-muted mt-0.5">scheduled or limited</p>
         </div>
-        <div className="bg-surface-raised border border-status-ok/20 rounded-[var(--radius-card)] p-4">
+        <div className="bg-surface-raised border border-status-success/20 rounded-[var(--radius-card)] p-4">
           <div className="flex items-center gap-1.5 mb-1">
-            <CheckCircle2 size={13} className="text-status-ok" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-status-ok">Ready</span>
+            <CheckCircle2 size={13} className="text-status-success" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-status-success">Ready</span>
           </div>
           <p className="text-2xl font-bold text-content-primary">{counts["ready"] ?? 0}</p>
           <p className="text-xs text-content-muted mt-0.5">fully operational</p>

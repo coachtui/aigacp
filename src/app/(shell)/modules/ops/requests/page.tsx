@@ -43,7 +43,9 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 export default function RequestsPage() {
   const { requests: allRequests, approveRequest, assignRequest } = useOps();
-  const { currentOrganization } = useOrg();
+  const { currentOrganization, role } = useOrg();
+
+  const canApprove = role === "owner" || role === "admin";
 
   // Pour-linked pump/mason requests are managed in the Pour Schedule hub.
   // This page handles equipment and mechanics requests only.
@@ -194,7 +196,7 @@ export default function RequestsPage() {
                 {/* Right: action buttons */}
                 {!isAssigning && allowed.length > 0 && (
                   <div className="flex items-center gap-2 shrink-0">
-                    {allowed.includes("approved") && (
+                    {allowed.includes("approved") && canApprove && (
                       <button
                         onClick={() => handleApprove(req.id)}
                         className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors"

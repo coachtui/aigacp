@@ -39,7 +39,7 @@ export default function FeatureAccessPage() {
                     <Check size={9} /> Enabled
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-content-muted bg-surface-overlay border border-surface-border px-2 py-0.5 rounded-[var(--radius-badge)]">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-content-secondary bg-content-muted/15 border border-content-muted/30 px-2 py-0.5 rounded-[var(--radius-badge)]">
                     <Lock size={9} /> Locked
                   </span>
                 )}

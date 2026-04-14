@@ -32,7 +32,7 @@ const STATUS_LABELS: Record<WorkOrderStatus, string> = {
 const PRIORITY_CLASS: Record<string, string> = {
   high:   "text-status-critical border-status-critical/30 bg-status-critical/10",
   medium: "text-gold border-gold/30 bg-gold/10",
-  low:    "text-content-muted border-surface-border bg-surface-overlay",
+  low:    "text-content-secondary border-content-muted/30 bg-content-muted/15",
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────

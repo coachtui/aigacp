@@ -99,7 +99,7 @@ export const READINESS_LABELS: Record<ReadinessStatus, string> = {
 
 /** Tailwind classes for status badges */
 export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
-  draft:         "text-content-muted border-surface-border bg-surface-overlay",
+  draft:         "text-content-secondary border-content-muted/30 bg-content-muted/15",
   open:          "text-blue-brand border-blue-brand/30 bg-blue-brand/10",
   triage:        "text-gold border-gold/30 bg-gold/10",
   approved:      "text-teal border-teal/30 bg-teal/10",
@@ -107,8 +107,8 @@ export const STATUS_BADGE: Record<MxWorkOrderStatus, string> = {
   in_progress:   "text-status-info border-status-info/30 bg-status-info/10",
   waiting_parts: "text-gold border-gold/40 bg-gold/15",
   blocked:       "text-status-critical border-status-critical/30 bg-status-critical/10",
-  completed:     "text-status-ok border-status-ok/30 bg-status-ok/10",
-  canceled:      "text-content-muted border-surface-border bg-surface-overlay line-through",
+  completed:     "text-status-success border-status-success/30 bg-status-success/15",
+  canceled:      "text-content-muted border-content-muted/25 bg-content-muted/10 line-through",
 };
 
 /** Tailwind classes for priority badges */
@@ -116,12 +116,12 @@ export const PRIORITY_BADGE: Record<MxWorkOrderPriority, string> = {
   critical: "text-status-critical border-status-critical/40 bg-status-critical/15 font-bold",
   high:     "text-status-critical border-status-critical/30 bg-status-critical/10",
   medium:   "text-gold border-gold/30 bg-gold/10",
-  low:      "text-content-muted border-surface-border bg-surface-overlay",
+  low:      "text-content-secondary border-content-muted/30 bg-content-muted/15",
 };
 
 /** Tailwind classes for readiness badges */
 export const READINESS_BADGE: Record<ReadinessStatus, string> = {
-  ready:             "text-status-ok border-status-ok/30 bg-status-ok/10",
+  ready:             "text-status-success border-status-success/30 bg-status-success/15",
   limited:           "text-gold border-gold/30 bg-gold/10",
   at_risk:           "text-gold border-gold/40 bg-gold/15 font-semibold",
   scheduled_service: "text-teal border-teal/30 bg-teal/10",

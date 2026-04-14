@@ -55,7 +55,7 @@ function getUrgency(neededByDate?: string): Urgency | null {
 const URGENCY_CHIP: Record<Urgency, string> = {
   overdue:  "text-status-critical bg-status-critical/10 border-status-critical/30 font-bold",
   today:    "text-gold bg-gold/10 border-gold/30 font-semibold",
-  tomorrow: "text-content-muted bg-surface-overlay border-surface-border",
+  tomorrow: "text-content-secondary bg-content-muted/15 border-content-muted/30",
 };
 
 const URGENCY_LABEL: Record<Urgency, string> = {
@@ -78,7 +78,7 @@ function getLaneActions(status: MxWorkOrderStatus): ActionDef[] {
     { label: "Resume",   status: "in_progress",   style: "bg-teal text-white border-teal hover:opacity-90",                          icon: <RotateCcw size={9} /> },
     { label: "Parts",    status: "waiting_parts", style: "border-gold/40 text-gold hover:bg-gold/10",                               icon: <PackageX size={9} /> },
     { label: "Blocked",  status: "blocked",       style: "border-status-critical/30 text-status-critical hover:bg-status-critical/10", icon: <XCircle size={9} /> },
-    { label: "Complete", status: "completed",     style: "bg-status-ok text-white border-status-ok hover:opacity-90",               icon: <CheckCircle2 size={9} /> },
+    { label: "Complete", status: "completed",     style: "bg-status-success text-white border-status-success hover:opacity-90",               icon: <CheckCircle2 size={9} /> },
   ];
   return defs.filter((d) => allowed.includes(d.status));
 }

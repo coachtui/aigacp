@@ -50,7 +50,7 @@ const URGENCY_DATE_COLOR: Record<Urgency, string> = {
 const URGENCY_CHIP: Record<Urgency, string> = {
   overdue:  "text-status-critical bg-status-critical/10 border-status-critical/30",
   today:    "text-gold bg-gold/10 border-gold/30",
-  tomorrow: "text-content-muted bg-surface-overlay border-surface-border",
+  tomorrow: "text-content-secondary bg-content-muted/15 border-content-muted/30",
 };
 
 const URGENCY_LABEL: Record<Urgency, string> = {
