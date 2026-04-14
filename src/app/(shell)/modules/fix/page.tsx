@@ -11,6 +11,7 @@ import { MOCK_ASSETS } from "@/lib/mock/assets";
 import { MOCK_PROJECTS } from "@/lib/mock/projects";
 import { MOCK_ALERTS } from "@/lib/mock/alerts";
 import { getSourceConfig } from "@/lib/modules/source-config";
+import { FixEscalateButton } from "@/components/modules/fix/FixEscalateButton";
 
 export const metadata = { title: "Fix" };
 
@@ -36,7 +37,7 @@ const FEATURES = [
 
 // ── page ──────────────────────────────────────────────────────────────────────
 
-type SearchParams = Promise<{ issueId?: string; assetId?: string; alertId?: string; source?: string }>;
+type SearchParams = Promise<{ issueId?: string; assetId?: string; alertId?: string; source?: string; role?: string }>;
 
 export default async function FixPage({ searchParams }: { searchParams: SearchParams }) {
   const params  = await searchParams;
@@ -44,6 +45,7 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
   const assetId = typeof params.assetId === "string" ? params.assetId : null;
   const alertId = typeof params.alertId === "string" ? params.alertId : null;
   const source  = typeof params.source  === "string" ? params.source  : null;
+  const role    = typeof params.role    === "string" ? params.role    : null;
 
   // Context resolution from mock data
   const issue = issueId ? MOCK_ISSUES.find((i) => i.id === issueId) ?? null : null;
@@ -171,6 +173,20 @@ export default async function FixPage({ searchParams }: { searchParams: SearchPa
               </div>
             )}
           </div>
+
+          {/* Field escalation — shown for superintendent/foreman when asset is in context */}
+          {asset && (role === "superintendent" || role === "foreman") && (
+            <div className="px-5 pb-5 border-t border-teal/20 pt-4 mt-2">
+              <p className="text-xs text-content-muted mb-3">
+                Could not resolve in the field?
+              </p>
+              <FixEscalateButton
+                assetId={asset.id}
+                assetName={asset.name}
+                projectId={asset.project_id}
+              />
+            </div>
+          )}
 
           {/* Footer — return + clear */}
           <div className="border-t border-teal/15 px-5 py-3 flex items-center gap-3">
