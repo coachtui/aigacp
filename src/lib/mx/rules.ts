@@ -35,9 +35,9 @@ export const TERMINAL_STATUSES: MxWorkOrderStatus[] = ["completed", "canceled"];
 
 // ── Permission helpers ────────────────────────────────────────────────────────
 
-/** Roles that can create a new work order */
+/** Roles that can create a new work order (or report an equipment issue) */
 export function canCreateWorkOrder(role: UserRole): boolean {
-  return ["owner", "admin", "mechanic"].includes(role);
+  return ["owner", "admin", "mechanic", "foreman", "superintendent", "project_engineer"].includes(role);
 }
 
 /** Roles that can approve a work order (move from triage → approved) */

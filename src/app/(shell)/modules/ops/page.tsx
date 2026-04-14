@@ -9,7 +9,7 @@ const FEATURES = [
   {
     icon:  <Hammer      size={16} className="text-gold" />,
     title: "Maintenance Status",
-    desc:  "View active work orders affecting your operations — OPS-blocking and readiness status sourced live from MX.",
+    desc:  "Report equipment issues and view active work orders affecting your operations — readiness status sourced from MX.",
     href:  "/modules/ops/work-orders",
   },
   {
