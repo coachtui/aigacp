@@ -3,42 +3,30 @@
 /**
  * OpsProvider — shared OPS session state
  *
- * Follows the same createContext + useReducer + custom-hook pattern as
- * OrgProvider and UIProvider. Lives at the shell layout level so state
- * persists across all OPS sub-page navigations without resetting.
- *
- * Phase 3 migration path: swap poursService.ts load/persist for Supabase
- * calls (or React Query mutations) — no page-component changes required.
- *
  * Responsibilities:
- *   - requests + work orders (existing)
- *   - pour schedule: create, edit, submit, approve, reject, cancel
+ *   - requests (create, approve, assign)
+ *   - pour schedule (create, edit, submit, approve, reject, cancel)
  *
- * NOT responsible for:
- *   - CRU data fetching (stays in src/lib/integrations/cru.ts)
- *   - persistence implementation (delegated to poursService)
+ * Work orders are NOT owned here. MX is the single source of truth for all
+ * work orders. When a request is assigned, OpsProvider calls onCreateMxWorkOrder
+ * (injected by the layout) so that MxProvider creates the canonical WO.
+ * The resulting MX work order ID is stored on the request as linkedMxWorkOrderId.
+ *
+ * Phase 3 migration path: swap poursService / requestsService for Supabase
+ * calls — no page-component changes required.
  */
 
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import { MOCK_WORK_ORDERS } from "@/lib/ops/mock-data";
 import * as poursService from "@/lib/ops/poursService";
 import * as requestsService from "@/lib/ops/requestsService";
 import type {
-  WorkOrder,  WorkOrderStatus,
   Request as OpsRequest, RequestStatus,
   PourEvent, CreatePourInput,
 } from "@/lib/ops/types";
+import type { CreateMxWorkOrderInput } from "@/lib/mx/types";
 import type { UserRole } from "@/types/org";
 
-// ── Transition rules (WO + Request) ──────────────────────────────────────────
-// Kept here because OpsProvider is the UI-state authority for these two domains.
-
-const WORK_ORDER_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
-  open:          ["in_progress"],
-  in_progress:   ["waiting_parts", "complete"],
-  waiting_parts: ["in_progress"],
-  complete:      [],
-};
+// ── Transition rules ──────────────────────────────────────────────────────────
 
 const REQUEST_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
   pending:  ["approved"],
@@ -49,28 +37,25 @@ const REQUEST_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
 // ── State ─────────────────────────────────────────────────────────────────────
 
 interface OpsState {
-  workOrders: WorkOrder[];
-  requests:   OpsRequest[];
-  pours:      PourEvent[];
+  requests: OpsRequest[];
+  pours:    PourEvent[];
 }
 
 type WorkerInput = { id: string; label: string; role?: string };
 
 type OpsAction =
-  | { type: "INIT_REQUESTS";    requests: OpsRequest[] }
-  | { type: "APPROVE_REQUEST";   id: string }
+  | { type: "INIT_REQUESTS";   requests: OpsRequest[] }
+  | { type: "APPROVE_REQUEST"; id: string }
   | {
-      type:           "ASSIGN_REQUEST";
-      id:             string;
-      worker?:        WorkerInput;
-      newWorkOrderId: string;
-      createdAt:      string;
+      type:                 "ASSIGN_REQUEST";
+      id:                   string;
+      worker?:              WorkerInput;
+      linkedMxWorkOrderId?: string;
     }
-  | { type: "UPDATE_WO_STATUS";  id: string; status: WorkOrderStatus }
-  | { type: "CREATE_REQUEST";    request: OpsRequest }
+  | { type: "CREATE_REQUEST"; request: OpsRequest }
   // Pour actions — state update only; service already persisted before dispatch
-  | { type: "INIT_POURS";   pours: PourEvent[] }
-  | { type: "UPSERT_POUR";  pour: PourEvent };
+  | { type: "INIT_POURS";  pours: PourEvent[] }
+  | { type: "UPSERT_POUR"; pour:  PourEvent   };
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
@@ -96,51 +81,25 @@ function opsReducer(state: OpsState, action: OpsAction): OpsState {
       const req = state.requests.find((r) => r.id === action.id);
       if (!req || !REQUEST_TRANSITIONS[req.status].includes("assigned")) return state;
 
-      const { worker, newWorkOrderId, createdAt } = action;
+      const { worker, linkedMxWorkOrderId } = action;
 
       const updatedReq: OpsRequest = {
         ...req,
-        status:          "assigned",
-        assignedToId:    worker?.id,
-        assignedToLabel: worker?.label ?? "TBD",
-        assignedToRole:  worker?.role,
-      };
-
-      const newWorkOrder: WorkOrder = {
-        id:              newWorkOrderId,
-        createdAt,
-        title:           `Dispatch: ${req.type.replace("_", " ")} — ${req.jobsite}`,
-        jobsite:         req.jobsite,
-        assignedToLabel: worker?.label ?? "TBD",
-        assignedToId:    worker?.id,
-        assignedToRole:  worker?.role,
-        status:          "open",
-        priority:        "medium",
-        sourceType:      "request",
-        sourceId:        req.id,
-        sourceModule:    worker?.id ? "cru" : "ops",
+        status:               "assigned",
+        assignedToId:         worker?.id,
+        assignedToLabel:      worker?.label ?? "TBD",
+        assignedToRole:       worker?.role,
+        linkedMxWorkOrderId,
       };
 
       return {
-        requests:   state.requests.map((r) => r.id === action.id ? updatedReq : r),
-        workOrders: [...state.workOrders, newWorkOrder],
-        pours:      state.pours,
+        ...state,
+        requests: state.requests.map((r) => r.id === action.id ? updatedReq : r),
       };
     }
 
     case "CREATE_REQUEST": {
       return { ...state, requests: [...state.requests, action.request] };
-    }
-
-    case "UPDATE_WO_STATUS": {
-      const wo = state.workOrders.find((w) => w.id === action.id);
-      if (!wo || !WORK_ORDER_TRANSITIONS[wo.status].includes(action.status)) return state;
-      return {
-        ...state,
-        workOrders: state.workOrders.map((w) =>
-          w.id === action.id ? { ...w, status: action.status } : w,
-        ),
-      };
     }
 
     case "INIT_POURS": {
@@ -163,20 +122,21 @@ function opsReducer(state: OpsState, action: OpsAction): OpsState {
 }
 
 const INITIAL_STATE: OpsState = {
-  workOrders: [...MOCK_WORK_ORDERS],
-  requests:   [], // loaded from requestsService after hydration
-  pours:      [], // loaded from poursService after hydration
+  requests: [], // loaded from requestsService after hydration
+  pours:    [], // loaded from poursService after hydration
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────
 
 interface OpsContextValue {
-  // Existing
-  workOrders:            WorkOrder[];
   requests:              OpsRequest[];
   approveRequest:        (id: string) => void;
+  /**
+   * Assign a request to a worker.
+   * This creates a MX work order (via the injected callback) and stores the
+   * returned WO id as linkedMxWorkOrderId on the request.
+   */
   assignRequest:         (id: string, worker?: WorkerInput) => void;
-  updateWorkOrderStatus: (id: string, status: WorkOrderStatus) => void;
   createRequest:         (data: Omit<OpsRequest, "id">) => void;
   // Pours
   pours:                 PourEvent[];
@@ -192,7 +152,14 @@ const OpsContext = createContext<OpsContextValue | null>(null);
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-export function OpsProvider({ children }: { children: React.ReactNode }) {
+interface OpsProviderProps {
+  children: React.ReactNode;
+  /** Injected by the layout so OpsProvider can create MX work orders without
+   *  depending on MxProvider directly (they are siblings in the tree). */
+  onCreateMxWorkOrder: (input: CreateMxWorkOrderInput) => { id: string };
+}
+
+export function OpsProvider({ children, onCreateMxWorkOrder }: OpsProviderProps) {
   const [state, dispatch] = useReducer(opsReducer, INITIAL_STATE);
 
   // Load pours + requests from services after hydration to avoid SSR/client mismatch
@@ -207,24 +174,34 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
     requestsService.saveAll(state.requests);
   }, [state.requests]);
 
-  // ── Request / Work Order actions ──────────────────────────────────────────
+  // ── Request actions ───────────────────────────────────────────────────────
 
   function approveRequest(id: string): void {
     dispatch({ type: "APPROVE_REQUEST", id });
   }
 
   function assignRequest(id: string, worker?: WorkerInput): void {
+    const req = state.requests.find((r) => r.id === id);
+    if (!req) return;
+
+    // Delegate work order creation to MX — MX is the single source of truth.
+    const wo = onCreateMxWorkOrder({
+      title:            `Dispatch: ${req.type.replace("_", " ")} — ${req.jobsite}`,
+      category:         "corrective",
+      priority:         "medium",
+      requestedBy:      req.requestedBy ?? "OPS",
+      requestedDate:    new Date().toISOString().split("T")[0],
+      neededByDate:     req.dateNeeded,
+      readinessImpact:  null,
+      opsBlocking:      false,
+    });
+
     dispatch({
-      type:           "ASSIGN_REQUEST",
+      type:                 "ASSIGN_REQUEST",
       id,
       worker,
-      newWorkOrderId: crypto.randomUUID(),
-      createdAt:      new Date().toISOString(),
+      linkedMxWorkOrderId:  wo.id,
     });
-  }
-
-  function updateWorkOrderStatus(id: string, status: WorkOrderStatus): void {
-    dispatch({ type: "UPDATE_WO_STATUS", id, status });
   }
 
   function createRequest(data: Omit<OpsRequest, "id">): void {
@@ -233,8 +210,7 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
 
   // ── Pour actions ──────────────────────────────────────────────────────────
   // Each function calls the service (which enforces rules + persists), then
-  // dispatches to update React state. If the service returns null the action
-  // was rejected by a rule — no state change happens.
+  // dispatches to update React state.
 
   function createPour(input: CreatePourInput, asDraft: boolean): void {
     const pour = poursService.createPour(input, asDraft);
@@ -262,23 +238,23 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
     if (!pour) return;
     dispatch({ type: "UPSERT_POUR", pour });
 
-    // Auto-create dispatch requests for any resource needs declared on this pour.
-    // Guard against duplicates on re-approval (rejected → resubmitted → approved again).
+    // Auto-create dispatch requests for resource needs declared on this pour.
+    // Guard against duplicates on re-approval.
     const alreadyCreated = state.requests.filter((r) => r.sourcePourId === id);
 
     if (pour.pumpRequest.requested && !alreadyCreated.some((r) => r.type === "pump_truck")) {
       dispatch({
         type: "CREATE_REQUEST",
         request: {
-          id:               crypto.randomUUID(),
-          type:             "pump_truck",
-          jobsite:          pour.location,
-          dateNeeded:       pour.date,
-          notes:            pour.pumpRequest.notes ?? `Pump truck for ${pour.yardage} yd³ pour.`,
-          status:           "pending",
-          requestedBy:      pour.createdByName,
+          id:                crypto.randomUUID(),
+          type:              "pump_truck",
+          jobsite:           pour.location,
+          dateNeeded:        pour.date,
+          notes:             pour.pumpRequest.notes ?? `Pump truck for ${pour.yardage} yd³ pour.`,
+          status:            "pending",
+          requestedBy:       pour.createdByName,
           requestedByUserId: pour.createdBy,
-          sourcePourId:     pour.id,
+          sourcePourId:      pour.id,
         },
       });
     }
@@ -287,16 +263,16 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
       dispatch({
         type: "CREATE_REQUEST",
         request: {
-          id:               crypto.randomUUID(),
-          type:             "mason",
-          jobsite:          pour.location,
-          dateNeeded:       pour.date,
-          notes:            pour.masonRequest.notes ?? `${pour.masonRequest.masonCount ?? "?"} masons needed for pour.`,
-          status:           "pending",
-          requestedBy:      pour.createdByName,
+          id:                crypto.randomUUID(),
+          type:              "mason",
+          jobsite:           pour.location,
+          dateNeeded:        pour.date,
+          notes:             pour.masonRequest.notes ?? `${pour.masonRequest.masonCount ?? "?"} masons needed for pour.`,
+          status:            "pending",
+          requestedBy:       pour.createdByName,
           requestedByUserId: pour.createdBy,
-          requestedCount:   pour.masonRequest.masonCount,
-          sourcePourId:     pour.id,
+          requestedCount:    pour.masonRequest.masonCount,
+          sourcePourId:      pour.id,
         },
       });
     }
@@ -327,11 +303,9 @@ export function OpsProvider({ children }: { children: React.ReactNode }) {
   return (
     <OpsContext.Provider
       value={{
-        workOrders:            state.workOrders,
         requests:              state.requests,
         approveRequest,
         assignRequest,
-        updateWorkOrderStatus,
         createRequest,
         pours:                 state.pours,
         createPour,

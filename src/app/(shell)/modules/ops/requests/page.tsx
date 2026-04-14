@@ -11,7 +11,7 @@ import {
 import type { CruWorker } from "@/lib/integrations/cru";
 import type { Request as OpsRequest, RequestStatus } from "@/lib/ops/types";
 import { useOrg } from "@/providers/OrgProvider";
-import { ArrowLeft, CheckCircle, Truck, Users, Wrench, UserCheck, Loader } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Truck, Users, Wrench, UserCheck, Loader } from "lucide-react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -53,8 +53,7 @@ export default function RequestsPage() {
   // Use the CRU-specific UUID when available; fall back to platform ID.
   const cruOrgId = currentOrganization.cruOrgId ?? currentOrganization.id;
 
-  // Transient UI state — notification, worker picker lifecycle
-  const [lastCreated,      setLastCreated]      = useState<string | null>(null);
+  // Transient UI state — worker picker lifecycle
   const [assigningId,      setAssigningId]      = useState<string | null>(null);
   const [workerOptions,    setWorkerOptions]    = useState<CruWorker[]>([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
@@ -87,11 +86,8 @@ export default function RequestsPage() {
   // ── Assign step 2: confirm selected worker ───────────────────────────────────
   function confirmAssign(req: OpsRequest) {
     const worker = workerOptions.find((w) => w.id === selectedWorkerId);
+    // assignRequest delegates work order creation to MX
     assignRequest(req.id, worker ? { id: worker.id, label: worker.name, role: worker.role } : undefined);
-
-    const workerNote = worker ? ` → ${worker.name}` : "";
-    setLastCreated(`Dispatch: ${TYPE_LABELS[req.type]} — ${req.jobsite}${workerNote}`);
-    setTimeout(() => setLastCreated(null), 5000);
 
     setAssigningId(null);
     setWorkerOptions([]);
@@ -123,14 +119,6 @@ export default function RequestsPage() {
           </p>
         </div>
       </div>
-
-      {/* Auto-created work order notice */}
-      {lastCreated && (
-        <div className="mb-4 flex items-center gap-2.5 px-4 py-3 rounded-[var(--radius-card)] border border-status-success/30 bg-status-success/5 text-sm text-status-success">
-          <CheckCircle size={14} />
-          <span>Work order created: <span className="font-semibold">{lastCreated}</span></span>
-        </div>
-      )}
 
       {/* List */}
       <div className="space-y-2">
@@ -192,6 +180,16 @@ export default function RequestsPage() {
                     )}
                   </div>
                 </div>
+
+                {/* View WO in MX — shown when request is assigned and linked to an MX WO */}
+                {req.status === "assigned" && req.linkedMxWorkOrderId && (
+                  <Link
+                    href={`/modules/mx/work-orders?inspect=${req.linkedMxWorkOrderId}`}
+                    className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-teal border border-teal/30 rounded-lg px-2 py-1 hover:bg-teal/5 transition-colors"
+                  >
+                    View WO in MX <ArrowUpRight size={10} />
+                  </Link>
+                )}
 
                 {/* Right: action buttons */}
                 {!isAssigning && allowed.length > 0 && (

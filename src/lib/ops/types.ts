@@ -1,32 +1,9 @@
-export type WorkOrderStatus   = "open" | "in_progress" | "waiting_parts" | "complete";
-export type WorkOrderPriority = "low" | "medium" | "high";
-export type RequestType       = "mason" | "pump_truck" | "equipment";
-export type RequestStatus     = "pending" | "approved" | "assigned";
+export type RequestType   = "mason" | "pump_truck" | "equipment";
+export type RequestStatus = "pending" | "approved" | "assigned";
 
 // Legacy — kept for CRU-event display in the pour schedule (CRU has its own
 // simplified status model). New OPS pours use PourStatus from pourRules.ts.
 export type PourEventStatus = "planned" | "confirmed" | "completed";
-
-export interface WorkOrder {
-  id:              string;
-  title:           string;
-  jobsite:         string;
-  equipmentId?:    string;
-  /** Display name — always populated */
-  assignedToLabel: string;
-  /** CRU worker ID — present when assigned through CRU integration */
-  assignedToId?:   string;
-  /** CRU role (mechanic / driver / mason / foreman) */
-  assignedToRole?: string;
-  status:          WorkOrderStatus;
-  priority:        WorkOrderPriority;
-  createdAt:       string;
-  /** Links back to the Request that spawned this work order */
-  sourceType?:     "request";
-  sourceId?:       string;
-  /** Module that provided the assignee — 'cru' when worker came from CRU integration */
-  sourceModule?:   "ops" | "cru";
-}
 
 export interface Request {
   id:                  string;
@@ -45,6 +22,8 @@ export interface Request {
   requestedCount?:     number;
   /** ID of the PourEvent that auto-generated this request on approval. */
   sourcePourId?:       string;
+  /** MX work order ID created when this request was assigned */
+  linkedMxWorkOrderId?: string;
 }
 
 // ── Pour workflow types ───────────────────────────────────────────────────────

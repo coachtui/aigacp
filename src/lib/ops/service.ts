@@ -1,6 +1,5 @@
-import { MOCK_WORK_ORDERS, MOCK_REQUESTS, MOCK_POUR_EVENTS } from "./mock-data";
+import { MOCK_REQUESTS, MOCK_POUR_EVENTS } from "./mock-data";
 import type {
-  WorkOrder,        WorkOrderStatus,
   Request,          RequestStatus,
   LegacyPourEvent,
 } from "./types";
@@ -8,54 +7,16 @@ import type {
 // ── Internal mutable state ────────────────────────────────────────────────────
 // Copies from mock — never mutate the imported arrays directly.
 
-let workOrders: WorkOrder[] = [...MOCK_WORK_ORDERS];
-let requests:   Request[]   = [...MOCK_REQUESTS];
+let requests:   Request[]         = [...MOCK_REQUESTS];
 let pourEvents: LegacyPourEvent[] = [...MOCK_POUR_EVENTS];
 
 // ── Transition rules ──────────────────────────────────────────────────────────
-
-export const WORK_ORDER_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
-  open:          ["in_progress"],
-  in_progress:   ["waiting_parts", "complete"],
-  waiting_parts: ["in_progress"],
-  complete:      [],
-};
 
 export const REQUEST_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
   pending:  ["approved"],
   approved: ["assigned"],
   assigned: [],
 };
-
-// ── Work Orders ───────────────────────────────────────────────────────────────
-
-export function getWorkOrders(): WorkOrder[] {
-  return workOrders;
-}
-
-export function createWorkOrder(
-  data: Omit<WorkOrder, "id" | "createdAt">,
-): WorkOrder {
-  const wo: WorkOrder = {
-    ...data,
-    id:        crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-  };
-  workOrders = [...workOrders, wo];
-  return wo;
-}
-
-export function updateWorkOrderStatus(
-  id: string,
-  status: WorkOrderStatus,
-): WorkOrder | null {
-  const wo = workOrders.find((w) => w.id === id);
-  if (!wo) return null;
-  if (!WORK_ORDER_TRANSITIONS[wo.status].includes(status)) return null;
-  const updated = { ...wo, status };
-  workOrders = workOrders.map((w) => (w.id === id ? updated : w));
-  return updated;
-}
 
 // ── Requests ──────────────────────────────────────────────────────────────────
 
@@ -73,13 +34,14 @@ export function createRequest(data: Omit<Request, "id">): Request {
  * Transition a request status.
  *
  * When transitioning to "assigned", an optional CRU worker can be provided.
- * The worker data is stamped onto the request and carried into the auto-created
- * work order, establishing the CRU → OPS assignment linkage.
+ * The worker data is stamped onto the request. Work order creation is handled
+ * by MX — the caller supplies the resulting linkedMxWorkOrderId.
  */
 export function updateRequestStatus(
-  id:      string,
-  status:  RequestStatus,
-  worker?: { id: string; label: string; role?: string },
+  id:                  string,
+  status:              RequestStatus,
+  worker?:             { id: string; label: string; role?: string },
+  linkedMxWorkOrderId?: string,
 ): Request | null {
   const req = requests.find((r) => r.id === id);
   if (!req) return null;
@@ -95,27 +57,9 @@ export function updateRequestStatus(
           assignedToRole:  worker.role,
         }
       : {}),
+    ...(linkedMxWorkOrderId ? { linkedMxWorkOrderId } : {}),
   };
   requests = requests.map((r) => (r.id === id ? updated : r));
-
-  // Orchestration: auto-create a Work Order when a request is assigned.
-  // If a CRU worker was selected, carry their ID/label/role into the work order
-  // and mark sourceModule: "cru" so the work orders board can display the origin.
-  if (status === "assigned") {
-    createWorkOrder({
-      title:           `Dispatch: ${req.type.replace("_", " ")} — ${req.jobsite}`,
-      jobsite:         req.jobsite,
-      assignedToLabel: worker?.label ?? "TBD",
-      assignedToId:    worker?.id,
-      assignedToRole:  worker?.role,
-      status:          "open",
-      priority:        "medium",
-      sourceType:      "request",
-      sourceId:        req.id,
-      sourceModule:    worker ? "cru" : "ops",
-    });
-  }
-
   return updated;
 }
 

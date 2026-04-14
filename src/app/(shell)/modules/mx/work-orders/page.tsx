@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { useMx } from "@/providers/MxProvider";
@@ -64,11 +65,19 @@ export default function MxWorkOrdersPage() {
   const { role } = useOrg();
   const canCreate = canCreateWorkOrder(role);
 
+  const searchParams = useSearchParams();
+
   const [filter,      setFilter]      = useState<FilterGroup>("all");
   const [showCreate,  setShowCreate]  = useState(false);
   const [createdId,   setCreatedId]   = useState<string | null>(null);
   // Inspector state — replaces full-page row navigation
   const [inspectId,   setInspectId]   = useState<string | null>(null);
+
+  // Deep-link from OPS: ?inspect=<woId> opens the inspector immediately
+  useEffect(() => {
+    const id = searchParams.get("inspect");
+    if (id) setInspectId(id);
+  }, [searchParams]);
 
   const group = FILTER_GROUPS.find((g) => g.id === filter)!;
   const visible = group.statuses

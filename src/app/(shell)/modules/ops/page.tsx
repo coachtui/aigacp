@@ -8,8 +8,8 @@ export const metadata = { title: "OPS" };
 const FEATURES = [
   {
     icon:  <Hammer      size={16} className="text-gold" />,
-    title: "Work Orders",
-    desc:  "Track shop and field work orders from open through completion — with priority triage and status transitions.",
+    title: "Maintenance Status",
+    desc:  "View active work orders affecting your operations — OPS-blocking and readiness status sourced live from MX.",
     href:  "/modules/ops/work-orders",
   },
   {
@@ -41,13 +41,13 @@ export default function OpsPage() {
         </div>
         <h1 className="text-2xl font-bold text-content-primary">OPS</h1>
         <p className="text-content-secondary mt-2 max-w-md leading-relaxed">
-          Operations and workflow engine. Coordinate work orders, field requests, and concrete pours across your entire organization.
+          Operations and workflow engine. Coordinate field requests, concrete pours, and monitor maintenance impact across your entire organization.
         </p>
         <Link
           href="/modules/ops/work-orders"
           className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg bg-gold hover:bg-gold-hover text-content-inverse text-sm font-semibold transition-colors"
         >
-          Open Work Orders <ArrowUpRight size={14} />
+          View Maintenance Status <ArrowUpRight size={14} />
         </Link>
       </div>
 

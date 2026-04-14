@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
-import { getWorkOrders, createWorkOrder } from "@/lib/ops/service";
-import type { WorkOrder } from "@/lib/ops/types";
+
+/**
+ * OPS work orders API route — deprecated.
+ *
+ * MX is the single source of truth for all work orders.
+ * Work order data is accessible via the MX module and MxProvider.
+ */
 
 export async function GET() {
-  return NextResponse.json(getWorkOrders());
+  return NextResponse.json(
+    { error: "OPS work orders endpoint removed. Use MX work orders." },
+    { status: 410 },
+  );
 }
 
-export async function POST(request: Request) {
-  const body = (await request.json()) as Omit<WorkOrder, "id" | "createdAt">;
-  const wo   = createWorkOrder(body);
-  return NextResponse.json(wo, { status: 201 });
+export async function POST() {
+  return NextResponse.json(
+    { error: "OPS work orders endpoint removed. Create work orders through MX." },
+    { status: 410 },
+  );
 }
