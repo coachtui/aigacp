@@ -5,10 +5,15 @@ import { Card } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { ModuleTile } from "@/components/ui/ModuleTile";
 import { MODULE_REGISTRY } from "@/lib/modules/module-registry";
-import { useOrg } from "@/providers/OrgProvider";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 export function ModuleLaunchpad() {
-  const { isModuleEnabled } = useOrg();
+  const { isModuleEnabled, isRoleHidden } = useModuleAccess();
+
+  const visibleModules = MODULE_REGISTRY.filter((mod) => {
+    if (isRoleHidden(mod.id)) return false;
+    return true;
+  });
 
   return (
     <Card variant="default" className="!p-0">
@@ -16,7 +21,7 @@ export function ModuleLaunchpad() {
         <SectionHeader title="Module Launchpad" subtitle="Quick access to your active tools" />
       </div>
       <div className="px-5 pb-5 grid grid-cols-2 gap-3">
-        {MODULE_REGISTRY.map((mod) => (
+        {visibleModules.map((mod) => (
           <ModuleTile
             key={mod.id}
             module={mod}
