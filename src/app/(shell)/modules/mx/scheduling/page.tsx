@@ -5,8 +5,8 @@ import Link from "next/link";
 import { PageContainer } from "@/components/ui/PageContainer";
 import { useMx } from "@/providers/MxProvider";
 import { useOrg } from "@/providers/OrgProvider";
-import { getCruMechanicsAndDrivers } from "@/lib/integrations/cru";
-import type { CruWorker } from "@/lib/integrations/cru";
+import { getOrgMechanicsAndDrivers } from "@/lib/registry";
+import type { OrgWorker } from "@/lib/registry";
 import {
   STATUS_LABELS, STATUS_BADGE,
   PRIORITY_LABELS, PRIORITY_BADGE,
@@ -391,9 +391,9 @@ function Lane({
 
 export default function MxSchedulingPage() {
   const { workOrders, assignMechanic, unassignMechanic, updateWorkOrderStatus, updateWorkOrder } = useMx();
-  const { currentUser, role } = useOrg();
+  const { currentOrganization, role } = useOrg();
 
-  const [mechanics,    setMechanics]    = useState<CruWorker[]>([]);
+  const [mechanics,    setMechanics]    = useState<OrgWorker[]>([]);
   const [loadingMechs, setLoadingMechs] = useState(true);
   const [draggedWoId,  setDraggedWoId]  = useState<string | null>(null);
   // Inspector — WO detail panel without leaving the board
@@ -403,10 +403,10 @@ export default function MxSchedulingPage() {
   const canAct    = canUpdateWorkOrderStatus(role);
 
   useEffect(() => {
-    getCruMechanicsAndDrivers(currentUser.id)
+    getOrgMechanicsAndDrivers(currentOrganization.id)
       .then(setMechanics)
       .finally(() => setLoadingMechs(false));
-  }, [currentUser.id]);
+  }, [currentOrganization.id]);
 
   // Unassigned active WOs — sorted: OPS-blocking → priority → neededByDate
   const unassigned = useMemo(

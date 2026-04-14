@@ -19,6 +19,7 @@ export interface OrgWorker {
   role:              string;
   orgId:             string;
   projectId?:        string;
+  siteName?:         string;
   available:         boolean;
   activeAssignment?: string;
   source:            "cru" | "local";
@@ -31,6 +32,7 @@ function toOrgWorker(orgId: string) {
     role:      w.role,
     orgId,
     projectId: w.siteId,
+    siteName:  w.siteName,
     available: w.available,
     source:    "cru",
   });

@@ -15,9 +15,9 @@ import {
   canAssignMechanic, canUpdateWorkOrderStatus, canApproveWorkOrder,
 } from "@/lib/mx/rules";
 import { deriveReadiness } from "@/lib/mx/readiness";
-import { getCruMechanicsAndDrivers } from "@/lib/integrations/cru";
+import { getOrgMechanicsAndDrivers } from "@/lib/registry";
 import type { MxWorkOrderStatus, MxWorkOrderPriority } from "@/lib/mx/types";
-import type { CruWorker } from "@/lib/integrations/cru";
+import type { OrgWorker } from "@/lib/registry";
 import {
   ArrowLeft, User, Wrench, AlertTriangle, CalendarDays,
   Building2, ChevronRight, UserPlus, X,
@@ -56,22 +56,22 @@ export default function WorkOrderDetailPage({
 }) {
   const { id } = use(params);
   const { workOrders, updateWorkOrderStatus, updateWorkOrder, assignMechanic, unassignMechanic } = useMx();
-  const { currentUser, role } = useOrg();
+  const { currentOrganization, role } = useOrg();
 
   const wo = workOrders.find((w) => w.id === id);
 
   const [showAssignPanel, setShowAssignPanel] = useState(false);
   // Load mechanics eagerly so assigned names resolve on first render
-  const [mechanics,       setMechanics]       = useState<CruWorker[]>([]);
+  const [mechanics,       setMechanics]       = useState<OrgWorker[]>([]);
   const [loadingMechs,    setLoadingMechs]    = useState(false);
 
   useEffect(() => {
     // Always load mechanics: needed for name resolution in assigned list
     setLoadingMechs(true);
-    getCruMechanicsAndDrivers(currentUser.id)
+    getOrgMechanicsAndDrivers(currentOrganization.id)
       .then(setMechanics)
       .finally(() => setLoadingMechs(false));
-  }, [currentUser.id]);
+  }, [currentOrganization.id]);
 
   if (!wo) {
     return (
@@ -111,7 +111,7 @@ export default function WorkOrderDetailPage({
     updateWorkOrder(wo!.id, { priority });
   }
 
-  function handleAssign(mechanic: CruWorker) {
+  function handleAssign(mechanic: OrgWorker) {
     assignMechanic(wo!.id, mechanic.id);
     setShowAssignPanel(false);
   }
