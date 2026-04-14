@@ -17,7 +17,7 @@ export interface ModuleContext {
  * - native: module is fully built inside AIGACP (e.g. MX, OPS)
  */
 export type ModuleDataAdapter =
-  | { type: "api";    fetch: (orgId: string, projectId: string) => Promise<unknown> }
+  | { type: "api";    fetch: (orgId: string, projectId: string) => Promise<unknown> } // typed per-module in Phase 3
   | { type: "embed";  buildUrl: (ctx: ModuleContext) => string }
   | { type: "native"; route: string }
 
@@ -35,5 +35,6 @@ export interface ModuleContract {
   id:           ModuleId;
   adapter:      ModuleDataAdapter;
   roleManifest: RoleManifest;
+  emitter?:     ModuleEmitter;
   bundleIds:    BundleId[];
 }
